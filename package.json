@@ -12,7 +12,7 @@
     "dev": "cross-env NODE_ENV=development rollup -cw"
   },
   "dependencies": {
-    "vue": "^2.1.4"
+    "vue": "^2.5.16"
   },
   "devDependencies": {
     "autoprefixer": "^6.4.3",
