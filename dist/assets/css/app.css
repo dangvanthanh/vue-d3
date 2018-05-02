@@ -1,0 +1,45 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+body {
+    margin: 0;
+}
+
+.app {
+    margin-top: 20px;
+    max-width: 1020px;
+    margin: 0 auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 500px);
+  grid-gap: 20px;
+}
+
+
+
+/*# sourceMappingURL=BarChart.vue.map */
+
+
+/*# sourceMappingURL=LineChart.vue.map */
