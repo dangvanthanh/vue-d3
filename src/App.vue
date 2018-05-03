@@ -3,6 +3,7 @@
     <div class="grid">
       <bar-chart />
       <line-chart />
+      <scatter-chart />
     </div>
   </div>
 </template>
@@ -10,12 +11,14 @@
 <script>
 import BarChart from '@/components/BarChart.vue';
 import LineChart from '@/components/LineChart.vue';
+import ScatterChart from '@/components/ScatterChart.vue';
 
 export default {
   name: 'app',
   components: {
     BarChart,
-    LineChart
+    LineChart,
+    ScatterChart
   }
 }
 </script>

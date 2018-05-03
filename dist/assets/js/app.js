@@ -8264,7 +8264,1047 @@
               }, 0);
             }
 
+            var xhtml = "http://www.w3.org/1999/xhtml";
+
+            var namespaces = {
+              svg: "http://www.w3.org/2000/svg",
+              xhtml: xhtml,
+              xlink: "http://www.w3.org/1999/xlink",
+              xml: "http://www.w3.org/XML/1998/namespace",
+              xmlns: "http://www.w3.org/2000/xmlns/"
+            };
+
+            function namespace(name) {
+              var prefix = name += "", i = prefix.indexOf(":");
+              if (i >= 0 && (prefix = name.slice(0, i)) !== "xmlns") { name = name.slice(i + 1); }
+              return namespaces.hasOwnProperty(prefix) ? {space: namespaces[prefix], local: name} : name;
+            }
+
+            function creatorInherit(name) {
+              return function() {
+                var document = this.ownerDocument,
+                    uri = this.namespaceURI;
+                return uri === xhtml && document.documentElement.namespaceURI === xhtml
+                    ? document.createElement(name)
+                    : document.createElementNS(uri, name);
+              };
+            }
+
+            function creatorFixed(fullname) {
+              return function() {
+                return this.ownerDocument.createElementNS(fullname.space, fullname.local);
+              };
+            }
+
+            function creator(name) {
+              var fullname = namespace(name);
+              return (fullname.local
+                  ? creatorFixed
+                  : creatorInherit)(fullname);
+            }
+
+            function none() {}
+
+            function selector(selector) {
+              return selector == null ? none : function() {
+                return this.querySelector(selector);
+              };
+            }
+
+            function selection_select(select) {
+              if (typeof select !== "function") { select = selector(select); }
+
+              for (var groups = this._groups, m = groups.length, subgroups = new Array(m), j = 0; j < m; ++j) {
+                for (var group = groups[j], n = group.length, subgroup = subgroups[j] = new Array(n), node, subnode, i = 0; i < n; ++i) {
+                  if ((node = group[i]) && (subnode = select.call(node, node.__data__, i, group))) {
+                    if ("__data__" in node) { subnode.__data__ = node.__data__; }
+                    subgroup[i] = subnode;
+                  }
+                }
+              }
+
+              return new Selection(subgroups, this._parents);
+            }
+
+            function empty() {
+              return [];
+            }
+
+            function selectorAll(selector) {
+              return selector == null ? empty : function() {
+                return this.querySelectorAll(selector);
+              };
+            }
+
+            function selection_selectAll(select) {
+              if (typeof select !== "function") { select = selectorAll(select); }
+
+              for (var groups = this._groups, m = groups.length, subgroups = [], parents = [], j = 0; j < m; ++j) {
+                for (var group = groups[j], n = group.length, node, i = 0; i < n; ++i) {
+                  if (node = group[i]) {
+                    subgroups.push(select.call(node, node.__data__, i, group));
+                    parents.push(node);
+                  }
+                }
+              }
+
+              return new Selection(subgroups, parents);
+            }
+
+            var matcher = function(selector) {
+              return function() {
+                return this.matches(selector);
+              };
+            };
+
+            if (typeof document !== "undefined") {
+              var element = document.documentElement;
+              if (!element.matches) {
+                var vendorMatches = element.webkitMatchesSelector
+                    || element.msMatchesSelector
+                    || element.mozMatchesSelector
+                    || element.oMatchesSelector;
+                matcher = function(selector) {
+                  return function() {
+                    return vendorMatches.call(this, selector);
+                  };
+                };
+              }
+            }
+
+            var matcher$1 = matcher;
+
+            function selection_filter(match) {
+              if (typeof match !== "function") { match = matcher$1(match); }
+
+              for (var groups = this._groups, m = groups.length, subgroups = new Array(m), j = 0; j < m; ++j) {
+                for (var group = groups[j], n = group.length, subgroup = subgroups[j] = [], node, i = 0; i < n; ++i) {
+                  if ((node = group[i]) && match.call(node, node.__data__, i, group)) {
+                    subgroup.push(node);
+                  }
+                }
+              }
+
+              return new Selection(subgroups, this._parents);
+            }
+
+            function sparse(update) {
+              return new Array(update.length);
+            }
+
+            function selection_enter() {
+              return new Selection(this._enter || this._groups.map(sparse), this._parents);
+            }
+
+            function EnterNode(parent, datum) {
+              this.ownerDocument = parent.ownerDocument;
+              this.namespaceURI = parent.namespaceURI;
+              this._next = null;
+              this._parent = parent;
+              this.__data__ = datum;
+            }
+
+            EnterNode.prototype = {
+              constructor: EnterNode,
+              appendChild: function(child) { return this._parent.insertBefore(child, this._next); },
+              insertBefore: function(child, next) { return this._parent.insertBefore(child, next); },
+              querySelector: function(selector) { return this._parent.querySelector(selector); },
+              querySelectorAll: function(selector) { return this._parent.querySelectorAll(selector); }
+            };
+
+            function constant(x) {
+              return function() {
+                return x;
+              };
+            }
+
+            var keyPrefix = "$"; // Protect against keys like “__proto__”.
+
+            function bindIndex(parent, group, enter, update, exit, data) {
+              var i = 0,
+                  node,
+                  groupLength = group.length,
+                  dataLength = data.length;
+
+              // Put any non-null nodes that fit into update.
+              // Put any null nodes into enter.
+              // Put any remaining data into enter.
+              for (; i < dataLength; ++i) {
+                if (node = group[i]) {
+                  node.__data__ = data[i];
+                  update[i] = node;
+                } else {
+                  enter[i] = new EnterNode(parent, data[i]);
+                }
+              }
+
+              // Put any non-null nodes that don’t fit into exit.
+              for (; i < groupLength; ++i) {
+                if (node = group[i]) {
+                  exit[i] = node;
+                }
+              }
+            }
+
+            function bindKey(parent, group, enter, update, exit, data, key) {
+              var i,
+                  node,
+                  nodeByKeyValue = {},
+                  groupLength = group.length,
+                  dataLength = data.length,
+                  keyValues = new Array(groupLength),
+                  keyValue;
+
+              // Compute the key for each node.
+              // If multiple nodes have the same key, the duplicates are added to exit.
+              for (i = 0; i < groupLength; ++i) {
+                if (node = group[i]) {
+                  keyValues[i] = keyValue = keyPrefix + key.call(node, node.__data__, i, group);
+                  if (keyValue in nodeByKeyValue) {
+                    exit[i] = node;
+                  } else {
+                    nodeByKeyValue[keyValue] = node;
+                  }
+                }
+              }
+
+              // Compute the key for each datum.
+              // If there a node associated with this key, join and add it to update.
+              // If there is not (or the key is a duplicate), add it to enter.
+              for (i = 0; i < dataLength; ++i) {
+                keyValue = keyPrefix + key.call(parent, data[i], i, data);
+                if (node = nodeByKeyValue[keyValue]) {
+                  update[i] = node;
+                  node.__data__ = data[i];
+                  nodeByKeyValue[keyValue] = null;
+                } else {
+                  enter[i] = new EnterNode(parent, data[i]);
+                }
+              }
+
+              // Add any remaining nodes that were not bound to data to exit.
+              for (i = 0; i < groupLength; ++i) {
+                if ((node = group[i]) && (nodeByKeyValue[keyValues[i]] === node)) {
+                  exit[i] = node;
+                }
+              }
+            }
+
+            function selection_data(value, key) {
+              if (!value) {
+                data = new Array(this.size()), j = -1;
+                this.each(function(d) { data[++j] = d; });
+                return data;
+              }
+
+              var bind = key ? bindKey : bindIndex,
+                  parents = this._parents,
+                  groups = this._groups;
+
+              if (typeof value !== "function") { value = constant(value); }
+
+              for (var m = groups.length, update = new Array(m), enter = new Array(m), exit = new Array(m), j = 0; j < m; ++j) {
+                var parent = parents[j],
+                    group = groups[j],
+                    groupLength = group.length,
+                    data = value.call(parent, parent && parent.__data__, j, parents),
+                    dataLength = data.length,
+                    enterGroup = enter[j] = new Array(dataLength),
+                    updateGroup = update[j] = new Array(dataLength),
+                    exitGroup = exit[j] = new Array(groupLength);
+
+                bind(parent, group, enterGroup, updateGroup, exitGroup, data, key);
+
+                // Now connect the enter nodes to their following update node, such that
+                // appendChild can insert the materialized enter node before this node,
+                // rather than at the end of the parent node.
+                for (var i0 = 0, i1 = 0, previous, next; i0 < dataLength; ++i0) {
+                  if (previous = enterGroup[i0]) {
+                    if (i0 >= i1) { i1 = i0 + 1; }
+                    while (!(next = updateGroup[i1]) && ++i1 < dataLength){ }
+                    previous._next = next || null;
+                  }
+                }
+              }
+
+              update = new Selection(update, parents);
+              update._enter = enter;
+              update._exit = exit;
+              return update;
+            }
+
+            function selection_exit() {
+              return new Selection(this._exit || this._groups.map(sparse), this._parents);
+            }
+
+            function selection_merge(selection$$1) {
+
+              for (var groups0 = this._groups, groups1 = selection$$1._groups, m0 = groups0.length, m1 = groups1.length, m = Math.min(m0, m1), merges = new Array(m0), j = 0; j < m; ++j) {
+                for (var group0 = groups0[j], group1 = groups1[j], n = group0.length, merge = merges[j] = new Array(n), node, i = 0; i < n; ++i) {
+                  if (node = group0[i] || group1[i]) {
+                    merge[i] = node;
+                  }
+                }
+              }
+
+              for (; j < m0; ++j) {
+                merges[j] = groups0[j];
+              }
+
+              return new Selection(merges, this._parents);
+            }
+
+            function selection_order() {
+
+              for (var groups = this._groups, j = -1, m = groups.length; ++j < m;) {
+                for (var group = groups[j], i = group.length - 1, next = group[i], node; --i >= 0;) {
+                  if (node = group[i]) {
+                    if (next && next !== node.nextSibling) { next.parentNode.insertBefore(node, next); }
+                    next = node;
+                  }
+                }
+              }
+
+              return this;
+            }
+
+            function selection_sort(compare) {
+              if (!compare) { compare = ascending; }
+
+              function compareNode(a, b) {
+                return a && b ? compare(a.__data__, b.__data__) : !a - !b;
+              }
+
+              for (var groups = this._groups, m = groups.length, sortgroups = new Array(m), j = 0; j < m; ++j) {
+                for (var group = groups[j], n = group.length, sortgroup = sortgroups[j] = new Array(n), node, i = 0; i < n; ++i) {
+                  if (node = group[i]) {
+                    sortgroup[i] = node;
+                  }
+                }
+                sortgroup.sort(compareNode);
+              }
+
+              return new Selection(sortgroups, this._parents).order();
+            }
+
             function ascending(a, b) {
+              return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
+            }
+
+            function selection_call() {
+              var callback = arguments[0];
+              arguments[0] = this;
+              callback.apply(null, arguments);
+              return this;
+            }
+
+            function selection_nodes() {
+              var nodes = new Array(this.size()), i = -1;
+              this.each(function() { nodes[++i] = this; });
+              return nodes;
+            }
+
+            function selection_node() {
+
+              for (var groups = this._groups, j = 0, m = groups.length; j < m; ++j) {
+                for (var group = groups[j], i = 0, n = group.length; i < n; ++i) {
+                  var node = group[i];
+                  if (node) { return node; }
+                }
+              }
+
+              return null;
+            }
+
+            function selection_size() {
+              var size = 0;
+              this.each(function() { ++size; });
+              return size;
+            }
+
+            function selection_empty() {
+              return !this.node();
+            }
+
+            function selection_each(callback) {
+
+              for (var groups = this._groups, j = 0, m = groups.length; j < m; ++j) {
+                for (var group = groups[j], i = 0, n = group.length, node; i < n; ++i) {
+                  if (node = group[i]) { callback.call(node, node.__data__, i, group); }
+                }
+              }
+
+              return this;
+            }
+
+            function attrRemove(name) {
+              return function() {
+                this.removeAttribute(name);
+              };
+            }
+
+            function attrRemoveNS(fullname) {
+              return function() {
+                this.removeAttributeNS(fullname.space, fullname.local);
+              };
+            }
+
+            function attrConstant(name, value) {
+              return function() {
+                this.setAttribute(name, value);
+              };
+            }
+
+            function attrConstantNS(fullname, value) {
+              return function() {
+                this.setAttributeNS(fullname.space, fullname.local, value);
+              };
+            }
+
+            function attrFunction(name, value) {
+              return function() {
+                var v = value.apply(this, arguments);
+                if (v == null) { this.removeAttribute(name); }
+                else { this.setAttribute(name, v); }
+              };
+            }
+
+            function attrFunctionNS(fullname, value) {
+              return function() {
+                var v = value.apply(this, arguments);
+                if (v == null) { this.removeAttributeNS(fullname.space, fullname.local); }
+                else { this.setAttributeNS(fullname.space, fullname.local, v); }
+              };
+            }
+
+            function selection_attr(name, value) {
+              var fullname = namespace(name);
+
+              if (arguments.length < 2) {
+                var node = this.node();
+                return fullname.local
+                    ? node.getAttributeNS(fullname.space, fullname.local)
+                    : node.getAttribute(fullname);
+              }
+
+              return this.each((value == null
+                  ? (fullname.local ? attrRemoveNS : attrRemove) : (typeof value === "function"
+                  ? (fullname.local ? attrFunctionNS : attrFunction)
+                  : (fullname.local ? attrConstantNS : attrConstant)))(fullname, value));
+            }
+
+            function defaultView(node) {
+              return (node.ownerDocument && node.ownerDocument.defaultView) // node is a Node
+                  || (node.document && node) // node is a Window
+                  || node.defaultView; // node is a Document
+            }
+
+            function styleRemove(name) {
+              return function() {
+                this.style.removeProperty(name);
+              };
+            }
+
+            function styleConstant(name, value, priority) {
+              return function() {
+                this.style.setProperty(name, value, priority);
+              };
+            }
+
+            function styleFunction(name, value, priority) {
+              return function() {
+                var v = value.apply(this, arguments);
+                if (v == null) { this.style.removeProperty(name); }
+                else { this.style.setProperty(name, v, priority); }
+              };
+            }
+
+            function selection_style(name, value, priority) {
+              return arguments.length > 1
+                  ? this.each((value == null
+                        ? styleRemove : typeof value === "function"
+                        ? styleFunction
+                        : styleConstant)(name, value, priority == null ? "" : priority))
+                  : styleValue(this.node(), name);
+            }
+
+            function styleValue(node, name) {
+              return node.style.getPropertyValue(name)
+                  || defaultView(node).getComputedStyle(node, null).getPropertyValue(name);
+            }
+
+            function propertyRemove(name) {
+              return function() {
+                delete this[name];
+              };
+            }
+
+            function propertyConstant(name, value) {
+              return function() {
+                this[name] = value;
+              };
+            }
+
+            function propertyFunction(name, value) {
+              return function() {
+                var v = value.apply(this, arguments);
+                if (v == null) { delete this[name]; }
+                else { this[name] = v; }
+              };
+            }
+
+            function selection_property(name, value) {
+              return arguments.length > 1
+                  ? this.each((value == null
+                      ? propertyRemove : typeof value === "function"
+                      ? propertyFunction
+                      : propertyConstant)(name, value))
+                  : this.node()[name];
+            }
+
+            function classArray(string) {
+              return string.trim().split(/^|\s+/);
+            }
+
+            function classList(node) {
+              return node.classList || new ClassList(node);
+            }
+
+            function ClassList(node) {
+              this._node = node;
+              this._names = classArray(node.getAttribute("class") || "");
+            }
+
+            ClassList.prototype = {
+              add: function(name) {
+                var i = this._names.indexOf(name);
+                if (i < 0) {
+                  this._names.push(name);
+                  this._node.setAttribute("class", this._names.join(" "));
+                }
+              },
+              remove: function(name) {
+                var i = this._names.indexOf(name);
+                if (i >= 0) {
+                  this._names.splice(i, 1);
+                  this._node.setAttribute("class", this._names.join(" "));
+                }
+              },
+              contains: function(name) {
+                return this._names.indexOf(name) >= 0;
+              }
+            };
+
+            function classedAdd(node, names) {
+              var list = classList(node), i = -1, n = names.length;
+              while (++i < n) { list.add(names[i]); }
+            }
+
+            function classedRemove(node, names) {
+              var list = classList(node), i = -1, n = names.length;
+              while (++i < n) { list.remove(names[i]); }
+            }
+
+            function classedTrue(names) {
+              return function() {
+                classedAdd(this, names);
+              };
+            }
+
+            function classedFalse(names) {
+              return function() {
+                classedRemove(this, names);
+              };
+            }
+
+            function classedFunction(names, value) {
+              return function() {
+                (value.apply(this, arguments) ? classedAdd : classedRemove)(this, names);
+              };
+            }
+
+            function selection_classed(name, value) {
+              var names = classArray(name + "");
+
+              if (arguments.length < 2) {
+                var list = classList(this.node()), i = -1, n = names.length;
+                while (++i < n) { if (!list.contains(names[i])) { return false; } }
+                return true;
+              }
+
+              return this.each((typeof value === "function"
+                  ? classedFunction : value
+                  ? classedTrue
+                  : classedFalse)(names, value));
+            }
+
+            function textRemove() {
+              this.textContent = "";
+            }
+
+            function textConstant(value) {
+              return function() {
+                this.textContent = value;
+              };
+            }
+
+            function textFunction(value) {
+              return function() {
+                var v = value.apply(this, arguments);
+                this.textContent = v == null ? "" : v;
+              };
+            }
+
+            function selection_text(value) {
+              return arguments.length
+                  ? this.each(value == null
+                      ? textRemove : (typeof value === "function"
+                      ? textFunction
+                      : textConstant)(value))
+                  : this.node().textContent;
+            }
+
+            function htmlRemove() {
+              this.innerHTML = "";
+            }
+
+            function htmlConstant(value) {
+              return function() {
+                this.innerHTML = value;
+              };
+            }
+
+            function htmlFunction(value) {
+              return function() {
+                var v = value.apply(this, arguments);
+                this.innerHTML = v == null ? "" : v;
+              };
+            }
+
+            function selection_html(value) {
+              return arguments.length
+                  ? this.each(value == null
+                      ? htmlRemove : (typeof value === "function"
+                      ? htmlFunction
+                      : htmlConstant)(value))
+                  : this.node().innerHTML;
+            }
+
+            function raise() {
+              if (this.nextSibling) { this.parentNode.appendChild(this); }
+            }
+
+            function selection_raise() {
+              return this.each(raise);
+            }
+
+            function lower() {
+              if (this.previousSibling) { this.parentNode.insertBefore(this, this.parentNode.firstChild); }
+            }
+
+            function selection_lower() {
+              return this.each(lower);
+            }
+
+            function selection_append(name) {
+              var create = typeof name === "function" ? name : creator(name);
+              return this.select(function() {
+                return this.appendChild(create.apply(this, arguments));
+              });
+            }
+
+            function constantNull() {
+              return null;
+            }
+
+            function selection_insert(name, before) {
+              var create = typeof name === "function" ? name : creator(name),
+                  select = before == null ? constantNull : typeof before === "function" ? before : selector(before);
+              return this.select(function() {
+                return this.insertBefore(create.apply(this, arguments), select.apply(this, arguments) || null);
+              });
+            }
+
+            function remove$3() {
+              var parent = this.parentNode;
+              if (parent) { parent.removeChild(this); }
+            }
+
+            function selection_remove() {
+              return this.each(remove$3);
+            }
+
+            function selection_cloneShallow() {
+              return this.parentNode.insertBefore(this.cloneNode(false), this.nextSibling);
+            }
+
+            function selection_cloneDeep() {
+              return this.parentNode.insertBefore(this.cloneNode(true), this.nextSibling);
+            }
+
+            function selection_clone(deep) {
+              return this.select(deep ? selection_cloneDeep : selection_cloneShallow);
+            }
+
+            function selection_datum(value) {
+              return arguments.length
+                  ? this.property("__data__", value)
+                  : this.node().__data__;
+            }
+
+            var filterEvents = {};
+
+            if (typeof document !== "undefined") {
+              var element$1 = document.documentElement;
+              if (!("onmouseenter" in element$1)) {
+                filterEvents = {mouseenter: "mouseover", mouseleave: "mouseout"};
+              }
+            }
+
+            function filterContextListener(listener, index, group) {
+              listener = contextListener(listener, index, group);
+              return function(event) {
+                var related = event.relatedTarget;
+                if (!related || (related !== this && !(related.compareDocumentPosition(this) & 8))) {
+                  listener.call(this, event);
+                }
+              };
+            }
+
+            function contextListener(listener, index, group) {
+              return function(event1) {
+                try {
+                  listener.call(this, this.__data__, index, group);
+                } finally {
+                }
+              };
+            }
+
+            function parseTypenames(typenames) {
+              return typenames.trim().split(/^|\s+/).map(function(t) {
+                var name = "", i = t.indexOf(".");
+                if (i >= 0) { name = t.slice(i + 1), t = t.slice(0, i); }
+                return {type: t, name: name};
+              });
+            }
+
+            function onRemove(typename) {
+              return function() {
+                var this$1 = this;
+
+                var on = this.__on;
+                if (!on) { return; }
+                for (var j = 0, i = -1, m = on.length, o; j < m; ++j) {
+                  if (o = on[j], (!typename.type || o.type === typename.type) && o.name === typename.name) {
+                    this$1.removeEventListener(o.type, o.listener, o.capture);
+                  } else {
+                    on[++i] = o;
+                  }
+                }
+                if (++i) { on.length = i; }
+                else { delete this.__on; }
+              };
+            }
+
+            function onAdd(typename, value, capture) {
+              var wrap = filterEvents.hasOwnProperty(typename.type) ? filterContextListener : contextListener;
+              return function(d, i, group) {
+                var this$1 = this;
+
+                var on = this.__on, o, listener = wrap(value, i, group);
+                if (on) { for (var j = 0, m = on.length; j < m; ++j) {
+                  if ((o = on[j]).type === typename.type && o.name === typename.name) {
+                    this$1.removeEventListener(o.type, o.listener, o.capture);
+                    this$1.addEventListener(o.type, o.listener = listener, o.capture = capture);
+                    o.value = value;
+                    return;
+                  }
+                } }
+                this.addEventListener(typename.type, listener, capture);
+                o = {type: typename.type, name: typename.name, value: value, listener: listener, capture: capture};
+                if (!on) { this.__on = [o]; }
+                else { on.push(o); }
+              };
+            }
+
+            function selection_on(typename, value, capture) {
+              var this$1 = this;
+
+              var typenames = parseTypenames(typename + ""), i, n = typenames.length, t;
+
+              if (arguments.length < 2) {
+                var on = this.node().__on;
+                if (on) { for (var j = 0, m = on.length, o; j < m; ++j) {
+                  for (i = 0, o = on[j]; i < n; ++i) {
+                    if ((t = typenames[i]).type === o.type && t.name === o.name) {
+                      return o.value;
+                    }
+                  }
+                } }
+                return;
+              }
+
+              on = value ? onAdd : onRemove;
+              if (capture == null) { capture = false; }
+              for (i = 0; i < n; ++i) { this$1.each(on(typenames[i], value, capture)); }
+              return this;
+            }
+
+            function dispatchEvent(node, type, params) {
+              var window = defaultView(node),
+                  event = window.CustomEvent;
+
+              if (typeof event === "function") {
+                event = new event(type, params);
+              } else {
+                event = window.document.createEvent("Event");
+                if (params) { event.initEvent(type, params.bubbles, params.cancelable), event.detail = params.detail; }
+                else { event.initEvent(type, false, false); }
+              }
+
+              node.dispatchEvent(event);
+            }
+
+            function dispatchConstant(type, params) {
+              return function() {
+                return dispatchEvent(this, type, params);
+              };
+            }
+
+            function dispatchFunction(type, params) {
+              return function() {
+                return dispatchEvent(this, type, params.apply(this, arguments));
+              };
+            }
+
+            function selection_dispatch(type, params) {
+              return this.each((typeof params === "function"
+                  ? dispatchFunction
+                  : dispatchConstant)(type, params));
+            }
+
+            var root = [null];
+
+            function Selection(groups, parents) {
+              this._groups = groups;
+              this._parents = parents;
+            }
+
+            function selection() {
+              return new Selection([[document.documentElement]], root);
+            }
+
+            Selection.prototype = selection.prototype = {
+              constructor: Selection,
+              select: selection_select,
+              selectAll: selection_selectAll,
+              filter: selection_filter,
+              data: selection_data,
+              enter: selection_enter,
+              exit: selection_exit,
+              merge: selection_merge,
+              order: selection_order,
+              sort: selection_sort,
+              call: selection_call,
+              nodes: selection_nodes,
+              node: selection_node,
+              size: selection_size,
+              empty: selection_empty,
+              each: selection_each,
+              attr: selection_attr,
+              style: selection_style,
+              property: selection_property,
+              classed: selection_classed,
+              text: selection_text,
+              html: selection_html,
+              raise: selection_raise,
+              lower: selection_lower,
+              append: selection_append,
+              insert: selection_insert,
+              remove: selection_remove,
+              clone: selection_clone,
+              datum: selection_datum,
+              on: selection_on,
+              dispatch: selection_dispatch
+            };
+
+            function select(selector) {
+              return typeof selector === "string"
+                  ? new Selection([[document.querySelector(selector)]], [document.documentElement])
+                  : new Selection([[selector]], root);
+            }
+
+            var slice = Array.prototype.slice;
+
+            function identity$1(x) {
+              return x;
+            }
+
+            var top = 1,
+                right = 2,
+                bottom = 3,
+                left = 4,
+                epsilon = 1e-6;
+
+            function translateX(x) {
+              return "translate(" + (x + 0.5) + ",0)";
+            }
+
+            function translateY(y) {
+              return "translate(0," + (y + 0.5) + ")";
+            }
+
+            function number(scale) {
+              return function(d) {
+                return +scale(d);
+              };
+            }
+
+            function center(scale) {
+              var offset = Math.max(0, scale.bandwidth() - 1) / 2; // Adjust for 0.5px offset.
+              if (scale.round()) { offset = Math.round(offset); }
+              return function(d) {
+                return +scale(d) + offset;
+              };
+            }
+
+            function entering() {
+              return !this.__axis;
+            }
+
+            function axis(orient, scale) {
+              var tickArguments = [],
+                  tickValues = null,
+                  tickFormat = null,
+                  tickSizeInner = 6,
+                  tickSizeOuter = 6,
+                  tickPadding = 3,
+                  k = orient === top || orient === left ? -1 : 1,
+                  x = orient === left || orient === right ? "x" : "y",
+                  transform = orient === top || orient === bottom ? translateX : translateY;
+
+              function axis(context) {
+                var values = tickValues == null ? (scale.ticks ? scale.ticks.apply(scale, tickArguments) : scale.domain()) : tickValues,
+                    format = tickFormat == null ? (scale.tickFormat ? scale.tickFormat.apply(scale, tickArguments) : identity$1) : tickFormat,
+                    spacing = Math.max(tickSizeInner, 0) + tickPadding,
+                    range = scale.range(),
+                    range0 = +range[0] + 0.5,
+                    range1 = +range[range.length - 1] + 0.5,
+                    position = (scale.bandwidth ? center : number)(scale.copy()),
+                    selection = context.selection ? context.selection() : context,
+                    path = selection.selectAll(".domain").data([null]),
+                    tick = selection.selectAll(".tick").data(values, scale).order(),
+                    tickExit = tick.exit(),
+                    tickEnter = tick.enter().append("g").attr("class", "tick"),
+                    line = tick.select("line"),
+                    text = tick.select("text");
+
+                path = path.merge(path.enter().insert("path", ".tick")
+                    .attr("class", "domain")
+                    .attr("stroke", "#000"));
+
+                tick = tick.merge(tickEnter);
+
+                line = line.merge(tickEnter.append("line")
+                    .attr("stroke", "#000")
+                    .attr(x + "2", k * tickSizeInner));
+
+                text = text.merge(tickEnter.append("text")
+                    .attr("fill", "#000")
+                    .attr(x, k * spacing)
+                    .attr("dy", orient === top ? "0em" : orient === bottom ? "0.71em" : "0.32em"));
+
+                if (context !== selection) {
+                  path = path.transition(context);
+                  tick = tick.transition(context);
+                  line = line.transition(context);
+                  text = text.transition(context);
+
+                  tickExit = tickExit.transition(context)
+                      .attr("opacity", epsilon)
+                      .attr("transform", function(d) { return isFinite(d = position(d)) ? transform(d) : this.getAttribute("transform"); });
+
+                  tickEnter
+                      .attr("opacity", epsilon)
+                      .attr("transform", function(d) { var p = this.parentNode.__axis; return transform(p && isFinite(p = p(d)) ? p : position(d)); });
+                }
+
+                tickExit.remove();
+
+                path
+                    .attr("d", orient === left || orient == right
+                        ? "M" + k * tickSizeOuter + "," + range0 + "H0.5V" + range1 + "H" + k * tickSizeOuter
+                        : "M" + range0 + "," + k * tickSizeOuter + "V0.5H" + range1 + "V" + k * tickSizeOuter);
+
+                tick
+                    .attr("opacity", 1)
+                    .attr("transform", function(d) { return transform(position(d)); });
+
+                line
+                    .attr(x + "2", k * tickSizeInner);
+
+                text
+                    .attr(x, k * spacing)
+                    .text(format);
+
+                selection.filter(entering)
+                    .attr("fill", "none")
+                    .attr("font-size", 10)
+                    .attr("font-family", "sans-serif")
+                    .attr("text-anchor", orient === right ? "start" : orient === left ? "end" : "middle");
+
+                selection
+                    .each(function() { this.__axis = position; });
+              }
+
+              axis.scale = function(_) {
+                return arguments.length ? (scale = _, axis) : scale;
+              };
+
+              axis.ticks = function() {
+                return tickArguments = slice.call(arguments), axis;
+              };
+
+              axis.tickArguments = function(_) {
+                return arguments.length ? (tickArguments = _ == null ? [] : slice.call(_), axis) : tickArguments.slice();
+              };
+
+              axis.tickValues = function(_) {
+                return arguments.length ? (tickValues = _ == null ? null : slice.call(_), axis) : tickValues && tickValues.slice();
+              };
+
+              axis.tickFormat = function(_) {
+                return arguments.length ? (tickFormat = _, axis) : tickFormat;
+              };
+
+              axis.tickSize = function(_) {
+                return arguments.length ? (tickSizeInner = tickSizeOuter = +_, axis) : tickSizeInner;
+              };
+
+              axis.tickSizeInner = function(_) {
+                return arguments.length ? (tickSizeInner = +_, axis) : tickSizeInner;
+              };
+
+              axis.tickSizeOuter = function(_) {
+                return arguments.length ? (tickSizeOuter = +_, axis) : tickSizeOuter;
+              };
+
+              axis.tickPadding = function(_) {
+                return arguments.length ? (tickPadding = +_, axis) : tickPadding;
+              };
+
+              return axis;
+            }
+
+            function axisBottom(scale) {
+              return axis(bottom, scale);
+            }
+
+            function axisLeft(scale) {
+              return axis(left, scale);
+            }
+
+            function ascending$1(a, b) {
               return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
             }
 
@@ -8296,11 +9336,11 @@
 
             function ascendingComparator(f) {
               return function(d, x) {
-                return ascending(f(d), x);
+                return ascending$1(f(d), x);
               };
             }
 
-            var ascendingBisect = bisector(ascending);
+            var ascendingBisect = bisector(ascending$1);
             var bisectRight = ascendingBisect.right;
 
             function range(start, stop, step) {
@@ -8496,7 +9536,7 @@
             var array$1 = Array.prototype;
 
             var map$2 = array$1.map;
-            var slice$1 = array$1.slice;
+            var slice$2 = array$1.slice;
 
             var implicit = {name: "implicit"};
 
@@ -8505,7 +9545,7 @@
                   domain = [],
                   unknown = implicit;
 
-              range = range == null ? [] : slice$1.call(range);
+              range = range == null ? [] : slice$2.call(range);
 
               function scale(d) {
                 var key = d + "", i = index.get(key);
@@ -8525,7 +9565,7 @@
               };
 
               scale.range = function(_) {
-                return arguments.length ? (range = slice$1.call(_), scale) : range.slice();
+                return arguments.length ? (range = slice$2.call(_), scale) : range.slice();
               };
 
               scale.unknown = function(_) {
@@ -9134,7 +10174,7 @@
               }
             }));
 
-            function constant$1(x) {
+            function constant$2(x) {
               return function() {
                 return x;
               };
@@ -9154,13 +10194,13 @@
 
             function gamma(y) {
               return (y = +y) === 1 ? nogamma : function(a, b) {
-                return b - a ? exponential(a, b, y) : constant$1(isNaN(a) ? b : a);
+                return b - a ? exponential(a, b, y) : constant$2(isNaN(a) ? b : a);
               };
             }
 
             function nogamma(a, b) {
               var d = b - a;
-              return d ? linear(a, d) : constant$1(isNaN(a) ? b : a);
+              return d ? linear(a, d) : constant$2(isNaN(a) ? b : a);
             }
 
             var rgb$1 = (function rgbGamma(y) {
@@ -9301,7 +10341,7 @@
 
             function interpolateValue(a, b) {
               var t = typeof b, c;
-              return b == null || t === "boolean" ? constant$1(b)
+              return b == null || t === "boolean" ? constant$2(b)
                   : (t === "number" ? reinterpolate
                   : t === "string" ? ((c = color(b)) ? (b = c, rgb$1) : string)
                   : b instanceof color ? rgb$1
@@ -9321,13 +10361,13 @@
 
             var rho = Math.SQRT2;
 
-            function constant$2(x) {
+            function constant$3(x) {
               return function() {
                 return x;
               };
             }
 
-            function number$1(x) {
+            function number$2(x) {
               return +x;
             }
 
@@ -9336,7 +10376,7 @@
             function deinterpolateLinear(a, b) {
               return (b -= (a = +a))
                   ? function(x) { return (x - a) / b; }
-                  : constant$2(b);
+                  : constant$3(b);
             }
 
             function deinterpolateClamp(deinterpolate) {
@@ -9417,15 +10457,15 @@
               };
 
               scale.domain = function(_) {
-                return arguments.length ? (domain = map$2.call(_, number$1), rescale()) : domain.slice();
+                return arguments.length ? (domain = map$2.call(_, number$2), rescale()) : domain.slice();
               };
 
               scale.range = function(_) {
-                return arguments.length ? (range$$1 = slice$1.call(_), rescale()) : range$$1.slice();
+                return arguments.length ? (range$$1 = slice$2.call(_), rescale()) : range$$1.slice();
               };
 
               scale.rangeRound = function(_) {
-                return range$$1 = slice$1.call(_), interpolate$$1 = interpolateRound, rescale();
+                return range$$1 = slice$2.call(_), interpolate$$1 = interpolateRound, rescale();
               };
 
               scale.clamp = function(_) {
@@ -9597,17 +10637,17 @@
                   + this.type;
             };
 
-            function identity$3(x) {
+            function identity$4(x) {
               return x;
             }
 
             var prefixes = ["y","z","a","f","p","n","µ","m","","k","M","G","T","P","E","Z","Y"];
 
             function formatLocale(locale) {
-              var group = locale.grouping && locale.thousands ? formatGroup(locale.grouping, locale.thousands) : identity$3,
+              var group = locale.grouping && locale.thousands ? formatGroup(locale.grouping, locale.thousands) : identity$4,
                   currency = locale.currency,
                   decimal = locale.decimal,
-                  numerals = locale.numerals ? formatNumerals(locale.numerals) : identity$3,
+                  numerals = locale.numerals ? formatNumerals(locale.numerals) : identity$4,
                   percent = locale.percent || "%";
 
               function newFormat(specifier) {
@@ -10796,56 +11836,57 @@
             var data = [
               {
                 x: 0,
-                y: 1,
+                y: 1
               },
               {
                 x: 1,
-                y: 50,
+                y: 50
               },
               {
                 x: 2,
-                y: 100,
+                y: 100
               },
               {
                 x: 3,
-                y: 150,
+                y: 150
               },
               {
                 x: 4,
-                y: 200,
+                y: 200
               },
               {
                 x: 5,
-                y: 250,
+                y: 250
               },
               {
                 x: 6,
-                y: 300,
+                y: 300
               },
               {
                 x: 7,
-                y: 350,
+                y: 350
               },
               {
                 x: 8,
-                y: 400,
+                y: 400
               },
               {
                 x: 9,
-                y: 450,
+                y: 450
               },
               {
                 x: 10,
-                y: 500,
-              } ];
+                y: 500
+              }
+            ];
 
             var xSelector = function (d) { return d.x; };
             var ySelector = function (d) { return d.y; };
 
-            var xScale = band().range([0, 500]).domain(data.map(function (d) { return xSelector(d); })).padding(0.3);
-            var yScale = linear$1().range([500, 0]).domain([0, 500]);
+            var xScale = band().range([0, 400]).domain(data.map(function (d) { return xSelector(d); })).padding(0.3);
+            var yScale = linear$1().range([420, 0]).domain([0, 500]);
 
-            var BarChart = {render: function(){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',[_c('h1',[_vm._v("Bar Chart")]),_vm._v(" "),_c('svg',{attrs:{"width":_vm.width,"height":_vm.height}},_vm._l((_vm.data),function(d,i){return _c('rect',{key:i,attrs:{"width":_vm.w,"height":_vm.calcHeight(d),"x":_vm.xScale(d),"y":_vm.yScale(d),"stroke":"#ff6347","strokeWidth":"3","fill":"#f5f5f5"}})}))])},staticRenderFns: [],
+            var BarChart = {render: function(){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',[_c('h1',[_vm._v("Bar Chart")]),_vm._v(" "),_c('svg',{attrs:{"width":_vm.width,"height":_vm.height}},[_c('g',{ref:"chart"},_vm._l((_vm.data),function(d,i){return _c('rect',{key:i,attrs:{"width":_vm.w,"height":_vm.calcHeight(d),"x":_vm.xScale(d),"y":_vm.yScale(d),"stroke":"#ff6347","strokeWidth":"3","fill":"#f5f5f5"}})})),_vm._v(" "),_c('g',{ref:"axis"})])])},staticRenderFns: [],
               name: 'BarChart',
               data: function data$1 () {
                 return {
@@ -10855,6 +11896,29 @@
                   data: data
                 }
               },
+              mounted: function mounted () {
+                var margin = { top: 40, left: 40, bottom: 40, right: 0 };
+                var yAxis = axisLeft(yScale).tickSizeInner(-420);
+                var xAxis = axisBottom(xScale);
+
+                var chartWidth = this.width - (margin.left + margin.right);
+                var chartHeight = this.height - (margin.top + margin.bottom);
+
+                select(this.$refs.chart)
+                  .attr('width', chartWidth)
+                  .attr('height', chartHeight)
+                  .attr('transform', ("translate(" + (margin.left) + ", " + (margin.top) + ")"));
+
+                select(this.$refs.axis).append('g')
+                  .attr('transform', ("translate(" + (margin.left) + ", " + (margin.top) + ")"))
+                  .attr('class', 'axis y')
+                  .call(yAxis);
+
+                select(this.$refs.axis).append('g')
+                  .attr('transform', ("translate(" + (margin.left) + ", " + (chartHeight + margin.top) + ")"))
+                  .attr('class', 'axis x')
+                  .call(xAxis);
+              },
               methods: {
                 yScale: function (d) {
                   return yScale(ySelector(d));
@@ -10863,887 +11927,21 @@
                   return xScale(xSelector(d));
                 },
                 calcHeight: function (d) {
+                var margin = { top: 40, left: 100, bottom: 40, right: 0 };
+
+                var chartHeight = this.height - (margin.top + margin.bottom);
+
                   var yValue = yScale(ySelector(d));
-                  var barHeight = this.height - yValue;
+                  var barHeight = chartHeight - yValue;
                   return barHeight;
                 }
               }
             }
 
-            var xhtml = "http://www.w3.org/1999/xhtml";
-
-            var namespaces = {
-              svg: "http://www.w3.org/2000/svg",
-              xhtml: xhtml,
-              xlink: "http://www.w3.org/1999/xlink",
-              xml: "http://www.w3.org/XML/1998/namespace",
-              xmlns: "http://www.w3.org/2000/xmlns/"
-            };
-
-            function namespace(name) {
-              var prefix = name += "", i = prefix.indexOf(":");
-              if (i >= 0 && (prefix = name.slice(0, i)) !== "xmlns") { name = name.slice(i + 1); }
-              return namespaces.hasOwnProperty(prefix) ? {space: namespaces[prefix], local: name} : name;
-            }
-
-            function creatorInherit(name) {
-              return function() {
-                var document = this.ownerDocument,
-                    uri = this.namespaceURI;
-                return uri === xhtml && document.documentElement.namespaceURI === xhtml
-                    ? document.createElement(name)
-                    : document.createElementNS(uri, name);
-              };
-            }
-
-            function creatorFixed(fullname) {
-              return function() {
-                return this.ownerDocument.createElementNS(fullname.space, fullname.local);
-              };
-            }
-
-            function creator(name) {
-              var fullname = namespace(name);
-              return (fullname.local
-                  ? creatorFixed
-                  : creatorInherit)(fullname);
-            }
-
-            function none() {}
-
-            function selector(selector) {
-              return selector == null ? none : function() {
-                return this.querySelector(selector);
-              };
-            }
-
-            function selection_select(select) {
-              if (typeof select !== "function") { select = selector(select); }
-
-              for (var groups = this._groups, m = groups.length, subgroups = new Array(m), j = 0; j < m; ++j) {
-                for (var group = groups[j], n = group.length, subgroup = subgroups[j] = new Array(n), node, subnode, i = 0; i < n; ++i) {
-                  if ((node = group[i]) && (subnode = select.call(node, node.__data__, i, group))) {
-                    if ("__data__" in node) { subnode.__data__ = node.__data__; }
-                    subgroup[i] = subnode;
-                  }
-                }
-              }
-
-              return new Selection(subgroups, this._parents);
-            }
-
-            function empty() {
-              return [];
-            }
-
-            function selectorAll(selector) {
-              return selector == null ? empty : function() {
-                return this.querySelectorAll(selector);
-              };
-            }
-
-            function selection_selectAll(select) {
-              if (typeof select !== "function") { select = selectorAll(select); }
-
-              for (var groups = this._groups, m = groups.length, subgroups = [], parents = [], j = 0; j < m; ++j) {
-                for (var group = groups[j], n = group.length, node, i = 0; i < n; ++i) {
-                  if (node = group[i]) {
-                    subgroups.push(select.call(node, node.__data__, i, group));
-                    parents.push(node);
-                  }
-                }
-              }
-
-              return new Selection(subgroups, parents);
-            }
-
-            var matcher = function(selector) {
-              return function() {
-                return this.matches(selector);
-              };
-            };
-
-            if (typeof document !== "undefined") {
-              var element = document.documentElement;
-              if (!element.matches) {
-                var vendorMatches = element.webkitMatchesSelector
-                    || element.msMatchesSelector
-                    || element.mozMatchesSelector
-                    || element.oMatchesSelector;
-                matcher = function(selector) {
-                  return function() {
-                    return vendorMatches.call(this, selector);
-                  };
-                };
-              }
-            }
-
-            var matcher$1 = matcher;
-
-            function selection_filter(match) {
-              if (typeof match !== "function") { match = matcher$1(match); }
-
-              for (var groups = this._groups, m = groups.length, subgroups = new Array(m), j = 0; j < m; ++j) {
-                for (var group = groups[j], n = group.length, subgroup = subgroups[j] = [], node, i = 0; i < n; ++i) {
-                  if ((node = group[i]) && match.call(node, node.__data__, i, group)) {
-                    subgroup.push(node);
-                  }
-                }
-              }
-
-              return new Selection(subgroups, this._parents);
-            }
-
-            function sparse(update) {
-              return new Array(update.length);
-            }
-
-            function selection_enter() {
-              return new Selection(this._enter || this._groups.map(sparse), this._parents);
-            }
-
-            function EnterNode(parent, datum) {
-              this.ownerDocument = parent.ownerDocument;
-              this.namespaceURI = parent.namespaceURI;
-              this._next = null;
-              this._parent = parent;
-              this.__data__ = datum;
-            }
-
-            EnterNode.prototype = {
-              constructor: EnterNode,
-              appendChild: function(child) { return this._parent.insertBefore(child, this._next); },
-              insertBefore: function(child, next) { return this._parent.insertBefore(child, next); },
-              querySelector: function(selector) { return this._parent.querySelector(selector); },
-              querySelectorAll: function(selector) { return this._parent.querySelectorAll(selector); }
-            };
-
-            function constant$3(x) {
-              return function() {
-                return x;
-              };
-            }
-
-            var keyPrefix = "$"; // Protect against keys like “__proto__”.
-
-            function bindIndex(parent, group, enter, update, exit, data) {
-              var i = 0,
-                  node,
-                  groupLength = group.length,
-                  dataLength = data.length;
-
-              // Put any non-null nodes that fit into update.
-              // Put any null nodes into enter.
-              // Put any remaining data into enter.
-              for (; i < dataLength; ++i) {
-                if (node = group[i]) {
-                  node.__data__ = data[i];
-                  update[i] = node;
-                } else {
-                  enter[i] = new EnterNode(parent, data[i]);
-                }
-              }
-
-              // Put any non-null nodes that don’t fit into exit.
-              for (; i < groupLength; ++i) {
-                if (node = group[i]) {
-                  exit[i] = node;
-                }
-              }
-            }
-
-            function bindKey(parent, group, enter, update, exit, data, key) {
-              var i,
-                  node,
-                  nodeByKeyValue = {},
-                  groupLength = group.length,
-                  dataLength = data.length,
-                  keyValues = new Array(groupLength),
-                  keyValue;
-
-              // Compute the key for each node.
-              // If multiple nodes have the same key, the duplicates are added to exit.
-              for (i = 0; i < groupLength; ++i) {
-                if (node = group[i]) {
-                  keyValues[i] = keyValue = keyPrefix + key.call(node, node.__data__, i, group);
-                  if (keyValue in nodeByKeyValue) {
-                    exit[i] = node;
-                  } else {
-                    nodeByKeyValue[keyValue] = node;
-                  }
-                }
-              }
-
-              // Compute the key for each datum.
-              // If there a node associated with this key, join and add it to update.
-              // If there is not (or the key is a duplicate), add it to enter.
-              for (i = 0; i < dataLength; ++i) {
-                keyValue = keyPrefix + key.call(parent, data[i], i, data);
-                if (node = nodeByKeyValue[keyValue]) {
-                  update[i] = node;
-                  node.__data__ = data[i];
-                  nodeByKeyValue[keyValue] = null;
-                } else {
-                  enter[i] = new EnterNode(parent, data[i]);
-                }
-              }
-
-              // Add any remaining nodes that were not bound to data to exit.
-              for (i = 0; i < groupLength; ++i) {
-                if ((node = group[i]) && (nodeByKeyValue[keyValues[i]] === node)) {
-                  exit[i] = node;
-                }
-              }
-            }
-
-            function selection_data(value, key) {
-              if (!value) {
-                data = new Array(this.size()), j = -1;
-                this.each(function(d) { data[++j] = d; });
-                return data;
-              }
-
-              var bind = key ? bindKey : bindIndex,
-                  parents = this._parents,
-                  groups = this._groups;
-
-              if (typeof value !== "function") { value = constant$3(value); }
-
-              for (var m = groups.length, update = new Array(m), enter = new Array(m), exit = new Array(m), j = 0; j < m; ++j) {
-                var parent = parents[j],
-                    group = groups[j],
-                    groupLength = group.length,
-                    data = value.call(parent, parent && parent.__data__, j, parents),
-                    dataLength = data.length,
-                    enterGroup = enter[j] = new Array(dataLength),
-                    updateGroup = update[j] = new Array(dataLength),
-                    exitGroup = exit[j] = new Array(groupLength);
-
-                bind(parent, group, enterGroup, updateGroup, exitGroup, data, key);
-
-                // Now connect the enter nodes to their following update node, such that
-                // appendChild can insert the materialized enter node before this node,
-                // rather than at the end of the parent node.
-                for (var i0 = 0, i1 = 0, previous, next; i0 < dataLength; ++i0) {
-                  if (previous = enterGroup[i0]) {
-                    if (i0 >= i1) { i1 = i0 + 1; }
-                    while (!(next = updateGroup[i1]) && ++i1 < dataLength){ }
-                    previous._next = next || null;
-                  }
-                }
-              }
-
-              update = new Selection(update, parents);
-              update._enter = enter;
-              update._exit = exit;
-              return update;
-            }
-
-            function selection_exit() {
-              return new Selection(this._exit || this._groups.map(sparse), this._parents);
-            }
-
-            function selection_merge(selection$$1) {
-
-              for (var groups0 = this._groups, groups1 = selection$$1._groups, m0 = groups0.length, m1 = groups1.length, m = Math.min(m0, m1), merges = new Array(m0), j = 0; j < m; ++j) {
-                for (var group0 = groups0[j], group1 = groups1[j], n = group0.length, merge = merges[j] = new Array(n), node, i = 0; i < n; ++i) {
-                  if (node = group0[i] || group1[i]) {
-                    merge[i] = node;
-                  }
-                }
-              }
-
-              for (; j < m0; ++j) {
-                merges[j] = groups0[j];
-              }
-
-              return new Selection(merges, this._parents);
-            }
-
-            function selection_order() {
-
-              for (var groups = this._groups, j = -1, m = groups.length; ++j < m;) {
-                for (var group = groups[j], i = group.length - 1, next = group[i], node; --i >= 0;) {
-                  if (node = group[i]) {
-                    if (next && next !== node.nextSibling) { next.parentNode.insertBefore(node, next); }
-                    next = node;
-                  }
-                }
-              }
-
-              return this;
-            }
-
-            function selection_sort(compare) {
-              if (!compare) { compare = ascending$1; }
-
-              function compareNode(a, b) {
-                return a && b ? compare(a.__data__, b.__data__) : !a - !b;
-              }
-
-              for (var groups = this._groups, m = groups.length, sortgroups = new Array(m), j = 0; j < m; ++j) {
-                for (var group = groups[j], n = group.length, sortgroup = sortgroups[j] = new Array(n), node, i = 0; i < n; ++i) {
-                  if (node = group[i]) {
-                    sortgroup[i] = node;
-                  }
-                }
-                sortgroup.sort(compareNode);
-              }
-
-              return new Selection(sortgroups, this._parents).order();
-            }
-
-            function ascending$1(a, b) {
-              return a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
-            }
-
-            function selection_call() {
-              var callback = arguments[0];
-              arguments[0] = this;
-              callback.apply(null, arguments);
-              return this;
-            }
-
-            function selection_nodes() {
-              var nodes = new Array(this.size()), i = -1;
-              this.each(function() { nodes[++i] = this; });
-              return nodes;
-            }
-
-            function selection_node() {
-
-              for (var groups = this._groups, j = 0, m = groups.length; j < m; ++j) {
-                for (var group = groups[j], i = 0, n = group.length; i < n; ++i) {
-                  var node = group[i];
-                  if (node) { return node; }
-                }
-              }
-
-              return null;
-            }
-
-            function selection_size() {
-              var size = 0;
-              this.each(function() { ++size; });
-              return size;
-            }
-
-            function selection_empty() {
-              return !this.node();
-            }
-
-            function selection_each(callback) {
-
-              for (var groups = this._groups, j = 0, m = groups.length; j < m; ++j) {
-                for (var group = groups[j], i = 0, n = group.length, node; i < n; ++i) {
-                  if (node = group[i]) { callback.call(node, node.__data__, i, group); }
-                }
-              }
-
-              return this;
-            }
-
-            function attrRemove(name) {
-              return function() {
-                this.removeAttribute(name);
-              };
-            }
-
-            function attrRemoveNS(fullname) {
-              return function() {
-                this.removeAttributeNS(fullname.space, fullname.local);
-              };
-            }
-
-            function attrConstant(name, value) {
-              return function() {
-                this.setAttribute(name, value);
-              };
-            }
-
-            function attrConstantNS(fullname, value) {
-              return function() {
-                this.setAttributeNS(fullname.space, fullname.local, value);
-              };
-            }
-
-            function attrFunction(name, value) {
-              return function() {
-                var v = value.apply(this, arguments);
-                if (v == null) { this.removeAttribute(name); }
-                else { this.setAttribute(name, v); }
-              };
-            }
-
-            function attrFunctionNS(fullname, value) {
-              return function() {
-                var v = value.apply(this, arguments);
-                if (v == null) { this.removeAttributeNS(fullname.space, fullname.local); }
-                else { this.setAttributeNS(fullname.space, fullname.local, v); }
-              };
-            }
-
-            function selection_attr(name, value) {
-              var fullname = namespace(name);
-
-              if (arguments.length < 2) {
-                var node = this.node();
-                return fullname.local
-                    ? node.getAttributeNS(fullname.space, fullname.local)
-                    : node.getAttribute(fullname);
-              }
-
-              return this.each((value == null
-                  ? (fullname.local ? attrRemoveNS : attrRemove) : (typeof value === "function"
-                  ? (fullname.local ? attrFunctionNS : attrFunction)
-                  : (fullname.local ? attrConstantNS : attrConstant)))(fullname, value));
-            }
-
-            function defaultView(node) {
-              return (node.ownerDocument && node.ownerDocument.defaultView) // node is a Node
-                  || (node.document && node) // node is a Window
-                  || node.defaultView; // node is a Document
-            }
-
-            function styleRemove(name) {
-              return function() {
-                this.style.removeProperty(name);
-              };
-            }
-
-            function styleConstant(name, value, priority) {
-              return function() {
-                this.style.setProperty(name, value, priority);
-              };
-            }
-
-            function styleFunction(name, value, priority) {
-              return function() {
-                var v = value.apply(this, arguments);
-                if (v == null) { this.style.removeProperty(name); }
-                else { this.style.setProperty(name, v, priority); }
-              };
-            }
-
-            function selection_style(name, value, priority) {
-              return arguments.length > 1
-                  ? this.each((value == null
-                        ? styleRemove : typeof value === "function"
-                        ? styleFunction
-                        : styleConstant)(name, value, priority == null ? "" : priority))
-                  : styleValue(this.node(), name);
-            }
-
-            function styleValue(node, name) {
-              return node.style.getPropertyValue(name)
-                  || defaultView(node).getComputedStyle(node, null).getPropertyValue(name);
-            }
-
-            function propertyRemove(name) {
-              return function() {
-                delete this[name];
-              };
-            }
-
-            function propertyConstant(name, value) {
-              return function() {
-                this[name] = value;
-              };
-            }
-
-            function propertyFunction(name, value) {
-              return function() {
-                var v = value.apply(this, arguments);
-                if (v == null) { delete this[name]; }
-                else { this[name] = v; }
-              };
-            }
-
-            function selection_property(name, value) {
-              return arguments.length > 1
-                  ? this.each((value == null
-                      ? propertyRemove : typeof value === "function"
-                      ? propertyFunction
-                      : propertyConstant)(name, value))
-                  : this.node()[name];
-            }
-
-            function classArray(string) {
-              return string.trim().split(/^|\s+/);
-            }
-
-            function classList(node) {
-              return node.classList || new ClassList(node);
-            }
-
-            function ClassList(node) {
-              this._node = node;
-              this._names = classArray(node.getAttribute("class") || "");
-            }
-
-            ClassList.prototype = {
-              add: function(name) {
-                var i = this._names.indexOf(name);
-                if (i < 0) {
-                  this._names.push(name);
-                  this._node.setAttribute("class", this._names.join(" "));
-                }
-              },
-              remove: function(name) {
-                var i = this._names.indexOf(name);
-                if (i >= 0) {
-                  this._names.splice(i, 1);
-                  this._node.setAttribute("class", this._names.join(" "));
-                }
-              },
-              contains: function(name) {
-                return this._names.indexOf(name) >= 0;
-              }
-            };
-
-            function classedAdd(node, names) {
-              var list = classList(node), i = -1, n = names.length;
-              while (++i < n) { list.add(names[i]); }
-            }
-
-            function classedRemove(node, names) {
-              var list = classList(node), i = -1, n = names.length;
-              while (++i < n) { list.remove(names[i]); }
-            }
-
-            function classedTrue(names) {
-              return function() {
-                classedAdd(this, names);
-              };
-            }
-
-            function classedFalse(names) {
-              return function() {
-                classedRemove(this, names);
-              };
-            }
-
-            function classedFunction(names, value) {
-              return function() {
-                (value.apply(this, arguments) ? classedAdd : classedRemove)(this, names);
-              };
-            }
-
-            function selection_classed(name, value) {
-              var names = classArray(name + "");
-
-              if (arguments.length < 2) {
-                var list = classList(this.node()), i = -1, n = names.length;
-                while (++i < n) { if (!list.contains(names[i])) { return false; } }
-                return true;
-              }
-
-              return this.each((typeof value === "function"
-                  ? classedFunction : value
-                  ? classedTrue
-                  : classedFalse)(names, value));
-            }
-
-            function textRemove() {
-              this.textContent = "";
-            }
-
-            function textConstant(value) {
-              return function() {
-                this.textContent = value;
-              };
-            }
-
-            function textFunction(value) {
-              return function() {
-                var v = value.apply(this, arguments);
-                this.textContent = v == null ? "" : v;
-              };
-            }
-
-            function selection_text(value) {
-              return arguments.length
-                  ? this.each(value == null
-                      ? textRemove : (typeof value === "function"
-                      ? textFunction
-                      : textConstant)(value))
-                  : this.node().textContent;
-            }
-
-            function htmlRemove() {
-              this.innerHTML = "";
-            }
-
-            function htmlConstant(value) {
-              return function() {
-                this.innerHTML = value;
-              };
-            }
-
-            function htmlFunction(value) {
-              return function() {
-                var v = value.apply(this, arguments);
-                this.innerHTML = v == null ? "" : v;
-              };
-            }
-
-            function selection_html(value) {
-              return arguments.length
-                  ? this.each(value == null
-                      ? htmlRemove : (typeof value === "function"
-                      ? htmlFunction
-                      : htmlConstant)(value))
-                  : this.node().innerHTML;
-            }
-
-            function raise$1() {
-              if (this.nextSibling) { this.parentNode.appendChild(this); }
-            }
-
-            function selection_raise() {
-              return this.each(raise$1);
-            }
-
-            function lower() {
-              if (this.previousSibling) { this.parentNode.insertBefore(this, this.parentNode.firstChild); }
-            }
-
-            function selection_lower() {
-              return this.each(lower);
-            }
-
-            function selection_append(name) {
-              var create = typeof name === "function" ? name : creator(name);
-              return this.select(function() {
-                return this.appendChild(create.apply(this, arguments));
-              });
-            }
-
-            function constantNull() {
-              return null;
-            }
-
-            function selection_insert(name, before) {
-              var create = typeof name === "function" ? name : creator(name),
-                  select = before == null ? constantNull : typeof before === "function" ? before : selector(before);
-              return this.select(function() {
-                return this.insertBefore(create.apply(this, arguments), select.apply(this, arguments) || null);
-              });
-            }
-
-            function remove$3() {
-              var parent = this.parentNode;
-              if (parent) { parent.removeChild(this); }
-            }
-
-            function selection_remove() {
-              return this.each(remove$3);
-            }
-
-            function selection_cloneShallow() {
-              return this.parentNode.insertBefore(this.cloneNode(false), this.nextSibling);
-            }
-
-            function selection_cloneDeep() {
-              return this.parentNode.insertBefore(this.cloneNode(true), this.nextSibling);
-            }
-
-            function selection_clone(deep) {
-              return this.select(deep ? selection_cloneDeep : selection_cloneShallow);
-            }
-
-            function selection_datum(value) {
-              return arguments.length
-                  ? this.property("__data__", value)
-                  : this.node().__data__;
-            }
-
-            var filterEvents = {};
-
-            if (typeof document !== "undefined") {
-              var element$1 = document.documentElement;
-              if (!("onmouseenter" in element$1)) {
-                filterEvents = {mouseenter: "mouseover", mouseleave: "mouseout"};
-              }
-            }
-
-            function filterContextListener(listener, index, group) {
-              listener = contextListener(listener, index, group);
-              return function(event) {
-                var related = event.relatedTarget;
-                if (!related || (related !== this && !(related.compareDocumentPosition(this) & 8))) {
-                  listener.call(this, event);
-                }
-              };
-            }
-
-            function contextListener(listener, index, group) {
-              return function(event1) {
-                try {
-                  listener.call(this, this.__data__, index, group);
-                } finally {
-                }
-              };
-            }
-
-            function parseTypenames(typenames) {
-              return typenames.trim().split(/^|\s+/).map(function(t) {
-                var name = "", i = t.indexOf(".");
-                if (i >= 0) { name = t.slice(i + 1), t = t.slice(0, i); }
-                return {type: t, name: name};
-              });
-            }
-
-            function onRemove(typename) {
-              return function() {
-                var this$1 = this;
-
-                var on = this.__on;
-                if (!on) { return; }
-                for (var j = 0, i = -1, m = on.length, o; j < m; ++j) {
-                  if (o = on[j], (!typename.type || o.type === typename.type) && o.name === typename.name) {
-                    this$1.removeEventListener(o.type, o.listener, o.capture);
-                  } else {
-                    on[++i] = o;
-                  }
-                }
-                if (++i) { on.length = i; }
-                else { delete this.__on; }
-              };
-            }
-
-            function onAdd(typename, value, capture) {
-              var wrap = filterEvents.hasOwnProperty(typename.type) ? filterContextListener : contextListener;
-              return function(d, i, group) {
-                var this$1 = this;
-
-                var on = this.__on, o, listener = wrap(value, i, group);
-                if (on) { for (var j = 0, m = on.length; j < m; ++j) {
-                  if ((o = on[j]).type === typename.type && o.name === typename.name) {
-                    this$1.removeEventListener(o.type, o.listener, o.capture);
-                    this$1.addEventListener(o.type, o.listener = listener, o.capture = capture);
-                    o.value = value;
-                    return;
-                  }
-                } }
-                this.addEventListener(typename.type, listener, capture);
-                o = {type: typename.type, name: typename.name, value: value, listener: listener, capture: capture};
-                if (!on) { this.__on = [o]; }
-                else { on.push(o); }
-              };
-            }
-
-            function selection_on(typename, value, capture) {
-              var this$1 = this;
-
-              var typenames = parseTypenames(typename + ""), i, n = typenames.length, t;
-
-              if (arguments.length < 2) {
-                var on = this.node().__on;
-                if (on) { for (var j = 0, m = on.length, o; j < m; ++j) {
-                  for (i = 0, o = on[j]; i < n; ++i) {
-                    if ((t = typenames[i]).type === o.type && t.name === o.name) {
-                      return o.value;
-                    }
-                  }
-                } }
-                return;
-              }
-
-              on = value ? onAdd : onRemove;
-              if (capture == null) { capture = false; }
-              for (i = 0; i < n; ++i) { this$1.each(on(typenames[i], value, capture)); }
-              return this;
-            }
-
-            function dispatchEvent(node, type, params) {
-              var window = defaultView(node),
-                  event = window.CustomEvent;
-
-              if (typeof event === "function") {
-                event = new event(type, params);
-              } else {
-                event = window.document.createEvent("Event");
-                if (params) { event.initEvent(type, params.bubbles, params.cancelable), event.detail = params.detail; }
-                else { event.initEvent(type, false, false); }
-              }
-
-              node.dispatchEvent(event);
-            }
-
-            function dispatchConstant(type, params) {
-              return function() {
-                return dispatchEvent(this, type, params);
-              };
-            }
-
-            function dispatchFunction(type, params) {
-              return function() {
-                return dispatchEvent(this, type, params.apply(this, arguments));
-              };
-            }
-
-            function selection_dispatch(type, params) {
-              return this.each((typeof params === "function"
-                  ? dispatchFunction
-                  : dispatchConstant)(type, params));
-            }
-
-            var root = [null];
-
-            function Selection(groups, parents) {
-              this._groups = groups;
-              this._parents = parents;
-            }
-
-            function selection() {
-              return new Selection([[document.documentElement]], root);
-            }
-
-            Selection.prototype = selection.prototype = {
-              constructor: Selection,
-              select: selection_select,
-              selectAll: selection_selectAll,
-              filter: selection_filter,
-              data: selection_data,
-              enter: selection_enter,
-              exit: selection_exit,
-              merge: selection_merge,
-              order: selection_order,
-              sort: selection_sort,
-              call: selection_call,
-              nodes: selection_nodes,
-              node: selection_node,
-              size: selection_size,
-              empty: selection_empty,
-              each: selection_each,
-              attr: selection_attr,
-              style: selection_style,
-              property: selection_property,
-              classed: selection_classed,
-              text: selection_text,
-              html: selection_html,
-              raise: selection_raise,
-              lower: selection_lower,
-              append: selection_append,
-              insert: selection_insert,
-              remove: selection_remove,
-              clone: selection_clone,
-              datum: selection_datum,
-              on: selection_on,
-              dispatch: selection_dispatch
-            };
-
-            function select(selector) {
-              return typeof selector === "string"
-                  ? new Selection([[document.querySelector(selector)]], [document.documentElement])
-                  : new Selection([[selector]], root);
-            }
-
             var pi = Math.PI,
                 tau = 2 * pi,
-                epsilon = 1e-6,
-                tauEpsilon = tau - epsilon;
+                epsilon$1 = 1e-6,
+                tauEpsilon = tau - epsilon$1;
 
             function Path() {
               this._x0 = this._y0 = // start of current subpath
@@ -11794,12 +11992,12 @@
                 }
 
                 // Or, is (x1,y1) coincident with (x0,y0)? Do nothing.
-                else if (!(l01_2 > epsilon)) {}
+                else if (!(l01_2 > epsilon$1)) {}
 
                 // Or, are (x0,y0), (x1,y1) and (x2,y2) collinear?
                 // Equivalently, is (x1,y1) coincident with (x2,y2)?
                 // Or, is the radius zero? Line to (x1,y1).
-                else if (!(Math.abs(y01 * x21 - y21 * x01) > epsilon) || !r) {
+                else if (!(Math.abs(y01 * x21 - y21 * x01) > epsilon$1) || !r) {
                   this._ += "L" + (this._x1 = x1) + "," + (this._y1 = y1);
                 }
 
@@ -11816,7 +12014,7 @@
                       t21 = l / l21;
 
                   // If the start tangent is not coincident with (x0,y0), line to.
-                  if (Math.abs(t01 - 1) > epsilon) {
+                  if (Math.abs(t01 - 1) > epsilon$1) {
                     this._ += "L" + (x1 + t01 * x01) + "," + (y1 + t01 * y01);
                   }
 
@@ -11841,7 +12039,7 @@
                 }
 
                 // Or, is (x0,y0) not coincident with the previous point? Line to (x0,y0).
-                else if (Math.abs(this._x1 - x0) > epsilon || Math.abs(this._y1 - y0) > epsilon) {
+                else if (Math.abs(this._x1 - x0) > epsilon$1 || Math.abs(this._y1 - y0) > epsilon$1) {
                   this._ += "L" + x0 + "," + y0;
                 }
 
@@ -11857,7 +12055,7 @@
                 }
 
                 // Is this arc non-empty? Draw an arc!
-                else if (da > epsilon) {
+                else if (da > epsilon$1) {
                   this._ += "A" + r + "," + r + ",0," + (+(da >= pi)) + "," + cw + "," + (this._x1 = x + r * Math.cos(a1)) + "," + (this._y1 = y + r * Math.sin(a1));
                 }
               },
@@ -12065,86 +12263,49 @@
               bezierCurveTo: function(x1, y1, x2, y2, x, y) { this._context.bezierCurveTo(y1, x1, y2, x2, y, x); }
             };
 
-            var data$1 = [
-              {
-                x: 0,
-                y: 1,
-              },
-              {
-                x: 1,
-                y: 50,
-              },
-              {
-                x: 2,
-                y: 100,
-              },
-              {
-                x: 3,
-                y: 150,
-              },
-              {
-                x: 4,
-                y: 200,
-              },
-              {
-                x: 5,
-                y: 250,
-              },
-              {
-                x: 6,
-                y: 300,
-              },
-              {
-                x: 7,
-                y: 350,
-              },
-              {
-                x: 8,
-                y: 400,
-              },
-              {
-                x: 9,
-                y: 450,
-              },
-              {
-                x: 10,
-                y: 500,
-              } ];
-
             var xSelector$1 = function (d) { return d.x; };
             var ySelector$1 = function (d) { return d.y; };
 
-            var xScale$1 = linear$1().range([0, 500]).domain([0, 10]);
-            var yScale$1 = linear$1().range([0, 500]).domain([0, 500]);
+            var xScale$1 = linear$1().range([0, 400]).domain([0, 10]);
+            var yScale$1 = linear$1().range([0, 420]).domain([0, 500]);
 
-            var LineChart = {render: function(){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',[_c('h1',[_vm._v("Line Chart")]),_vm._v(" "),_c('svg',{ref:"svg",attrs:{"width":_vm.width,"height":_vm.height}},[_c('path',{attrs:{"d":_vm.path,"stroke":"#ff6347","strokeWidth":"3","fill":"none"}})])])},staticRenderFns: [],
+            var LineChart = {render: function(){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',[_c('h1',[_vm._v("Line Chart")]),_vm._v(" "),_c('svg',{ref:"svg",attrs:{"width":_vm.width,"height":_vm.height}},[_c('g',{ref:"chart"},[_c('path',{attrs:{"d":_vm.path,"stroke":"#ff6347","strokeWidth":"3","fill":"none"}})]),_vm._v(" "),_c('g',{ref:"circle"}),_vm._v(" "),_c('g',{ref:"axis"})])])},staticRenderFns: [],
               name: 'LineChart',
               data: function data$1 () {
                 return {
                   width: 500,
                   height: 500,
-                  data: data$1,
+                  data: data,
                   path: '',
                   selected: null
                 }
               },
               mounted: function mounted () {
-                var this$1 = this;
-
                 // const path = line().x(d => xScale(xSelector(d))).y(d => yScale(ySelector(d))).curve(curveStep);
                 var path = line().x(function (d) { return xScale$1(xSelector$1(d)); }).y(function (d) { return yScale$1(ySelector$1(d)); });
-                this.path = path(data$1);
+                this.path = path(data);
 
-                data$1.forEach(function (d, i) {
-                  select(this$1.$refs.svg)
-                    .append('circle')
-                    .attr('cx', this$1.xPoint(d))
-                    .attr('cy', this$1.yPoint(d))
-                    .attr('r', '5')
-                    .attr('stroke', '#fff')
-                    .attr('strokeWidth', 2)
-                    .attr('fill', '#ff6347');
-                });
+                var margin = { top: 40, left: 40, bottom: 40, right: 0 };
+                var yAxis = axisLeft(yScale$1).tickSizeInner(-420);
+                var xAxis = axisBottom(xScale$1);
+
+                var chartWidth = this.width - (margin.left + margin.right);
+                var chartHeight = this.height - (margin.top + margin.bottom);
+
+                select(this.$refs.chart)
+                  .attr('width', chartWidth)
+                  .attr('height', chartHeight)
+                  .attr('transform', ("translate(" + (margin.left) + ", " + (margin.top) + ")"));
+
+                select(this.$refs.axis).append('g')
+                  .attr('transform', ("translate(" + (margin.left) + ", " + (margin.top) + ")"))
+                  .attr('class', 'axis y')
+                  .call(yAxis);
+
+                select(this.$refs.axis).append('g')
+                  .attr('transform', ("translate(" + (margin.left) + ", " + (chartHeight + margin.top) + ")"))
+                  .attr('class', 'axis x')
+                  .call(xAxis);
               },
               methods: {
                 xPoint: function (d) {
@@ -12156,11 +12317,78 @@
               }
             }
 
-            var App = {render: function(){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{staticClass:"app",attrs:{"id":"app"}},[_c('div',{staticClass:"grid"},[_c('bar-chart'),_vm._v(" "),_c('line-chart')],1)])},staticRenderFns: [],
+            var xSelector$2 = function (d) { return d.x; };
+            var ySelector$2 = function (d) { return d.y; };
+
+            var xScale$2 = linear$1().range([0, 400]).domain([0, 10]);
+            var yScale$2 = linear$1().range([420, 0]).domain([0, 420]);
+
+            var ScatterChart = {render: function(){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',[_c('h1',[_vm._v("Scatter Chart")]),_vm._v(" "),_c('svg',{ref:"svg",attrs:{"width":_vm.width,"height":_vm.height}},[_c('g',{ref:"chart"}),_vm._v(" "),_c('g',{ref:"circle"}),_vm._v(" "),_c('g',{ref:"axis"})])])},staticRenderFns: [],
+              name: 'LineChart',
+              data: function data$1 () {
+                return {
+                  width: 500,
+                  height: 500,
+                  data: data,
+                  path: '',
+                }
+              },
+              mounted: function mounted () {
+                var this$1 = this;
+
+                var path = line().x(function (d) { return xScale$2(xSelector$2(d)); }).y(function (d) { return yScale$2(ySelector$2(d)); });
+                this.path = path(data);
+
+                var margin = { top: 40, left: 40, bottom: 40, right: 0 };
+                var yAxis = axisLeft(yScale$2).tickSizeInner(-420);
+                var xAxis = axisBottom(xScale$2);
+
+                var chartWidth = this.width - (margin.left + margin.right);
+                var chartHeight = this.height - (margin.top + margin.bottom);
+
+                select(this.$refs.chart)
+                  .attr('width', chartWidth)
+                  .attr('height', chartHeight)
+                  .attr('transform', ("translate(" + (margin.left) + ", " + (margin.top) + ")"));
+
+                select(this.$refs.axis).append('g')
+                  .attr('transform', ("translate(" + (margin.left) + ", " + (margin.top) + ")"))
+                  .attr('class', 'axis y')
+                  .call(yAxis);
+
+                select(this.$refs.axis).append('g')
+                  .attr('transform', ("translate(" + (margin.left) + ", " + (chartHeight + margin.top) + ")"))
+                  .attr('class', 'axis x')
+                  .call(xAxis);
+
+                data.forEach(function (d, i) {
+                  select(this$1.$refs.circle)
+                    .attr('transform', ("translate(" + (margin.left) + ", " + (margin.top) + ")"))
+                    .append('circle')
+                    .attr('cx', this$1.xPoint(d))
+                    .attr('cy', this$1.yPoint(d))
+                    .attr('r', '5')
+                    .attr('stroke', '#fff')
+                    .attr('strokeWidth', 2)
+                    .attr('fill', '#ff6347');
+                });
+              },
+              methods: {
+                xPoint: function (d) {
+                  return yScale$2(ySelector$2(d));
+                },
+                yPoint: function (d) {
+                  return xScale$2(xSelector$2(d));
+                }
+              }
+            }
+
+            var App = {render: function(){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;return _c('div',{staticClass:"app",attrs:{"id":"app"}},[_c('div',{staticClass:"grid"},[_c('bar-chart'),_vm._v(" "),_c('line-chart'),_vm._v(" "),_c('scatter-chart')],1)])},staticRenderFns: [],
               name: 'app',
               components: {
                 BarChart: BarChart,
-                LineChart: LineChart
+                LineChart: LineChart,
+                ScatterChart: ScatterChart
               }
             }
 

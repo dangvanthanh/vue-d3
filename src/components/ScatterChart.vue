@@ -1,19 +1,9 @@
 <template>
   <div>
-    <h1>Bar Chart</h1>
-    <svg :width="width" :height="height">
-      <g ref="chart">
-        <rect
-          v-for="(d, i) in data"
-          :key="i"
-          :width="w"
-          :height="calcHeight(d)"
-          :x="xScale(d)"
-          :y="yScale(d)"
-          stroke="#ff6347"
-          strokeWidth="3"
-          fill="#f5f5f5"/>
-      </g>
+    <h1>Scatter Chart</h1>
+    <svg :width="width" :height="height" ref="svg">
+      <g ref="chart"></g>
+      <g ref="circle"></g>
       <g ref="axis"></g>
     </svg>
   </div>
@@ -22,26 +12,30 @@
 <script>
 import { select } from 'd3-selection';
 import { axisLeft, axisBottom } from 'd3-axis';
-import { scaleBand, scaleLinear } from 'd3-scale';
+import { scaleLinear } from 'd3-scale';
+import { line, curveStep } from 'd3-shape';
 import { data } from '../store';
 
 const xSelector = d => d.x;
 const ySelector = d => d.y;
 
-const xScale = scaleBand().range([0, 400]).domain(data.map(d => xSelector(d))).padding(0.3);
-const yScale = scaleLinear().range([420, 0]).domain([0, 500]);
+const xScale = scaleLinear().range([0, 400]).domain([0, 10]);
+const yScale = scaleLinear().range([420, 0]).domain([0, 420]);
 
 export default {
-  name: 'BarChart',
+  name: 'LineChart',
   data () {
     return {
       width: 500,
       height: 500,
-      w: xScale.bandwidth(),
-      data: data
+      data: data,
+      path: '',
     }
   },
   mounted () {
+    const path = line().x(d => xScale(xSelector(d))).y(d => yScale(ySelector(d)));
+    this.path = path(data);
+
     const margin = { top: 40, left: 40, bottom: 40, right: 0 };
     const yAxis = axisLeft(yScale).tickSizeInner(-420);
     const xAxis = axisBottom(xScale);
@@ -63,30 +57,29 @@ export default {
       .attr('transform', `translate(${margin.left}, ${chartHeight + margin.top})`)
       .attr('class', 'axis x')
       .call(xAxis);
+
+    data.forEach((d, i) => {
+      select(this.$refs.circle)
+        .attr('transform', `translate(${margin.left}, ${margin.top})`)
+        .append('circle')
+        .attr('cx', this.xPoint(d))
+        .attr('cy', this.yPoint(d))
+        .attr('r', '5')
+        .attr('stroke', '#fff')
+        .attr('strokeWidth', 2)
+        .attr('fill', '#ff6347');
+    });
   },
   methods: {
-    yScale: function (d) {
+    xPoint: function (d) {
       return yScale(ySelector(d));
     },
-    xScale: function (d) {
+    yPoint: function (d) {
       return xScale(xSelector(d));
-    },
-    calcHeight: function (d) {
-    const margin = { top: 40, left: 100, bottom: 40, right: 0 };
-
-    const chartHeight = this.height - (margin.top + margin.bottom);
-
-      const yValue = yScale(ySelector(d));
-      const barHeight = chartHeight - yValue;
-      return barHeight;
     }
   }
 }
 </script>
 
 <style>
-.tick line {
-  stroke-dasharray: 2 2;
-  stroke: #ccc;
-}
 </style>

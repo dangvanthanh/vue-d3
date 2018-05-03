@@ -21,6 +21,9 @@
 
 
 
+
+
+
 body {
     margin: 0;
 }
@@ -39,7 +42,99 @@ body {
 
 
 
-/*# sourceMappingURL=BarChart.vue.map */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.tick line {
+  stroke-dasharray: 2 2;
+  stroke: #ccc;
+}
+
 
 
 /*# sourceMappingURL=LineChart.vue.map */
+
+
+/*# sourceMappingURL=ScatterChart.vue.map */
