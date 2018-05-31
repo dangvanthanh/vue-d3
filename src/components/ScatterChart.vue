@@ -1,65 +1,73 @@
 <template>
-  <div>
-    <h1>Scatter Chart</h1>
-    <svg :width="width" :height="height" ref="svg">
-      <g ref="chart"></g>
-      <g ref="circle"></g>
-      <g ref="axis"></g>
-    </svg>
-  </div>
+  <svg :width="width" :height="height" ref="svg">
+    <g ref="chart"></g>
+    <g ref="circle"></g>
+    <g ref="axis"></g>
+  </svg>
 </template>
 
 <script>
-import { select } from 'd3-selection';
-import { axisLeft, axisBottom } from 'd3-axis';
-import { scaleLinear } from 'd3-scale';
-import { line, curveStep } from 'd3-shape';
-import { data } from '../store';
-
-const xSelector = d => d.x;
-const ySelector = d => d.y;
-
-const xScale = scaleLinear().range([0, 400]).domain([0, 10]);
-const yScale = scaleLinear().range([420, 0]).domain([0, 420]);
+import * as d3 from 'd3';
+import { xSelector, ySelector } from '../utils';
 
 export default {
-  name: 'LineChart',
-  data () {
+  name: 'ScatterChart',
+  props: ['data'],
+  data() {
     return {
       width: 500,
       height: 500,
-      data: data,
-      path: '',
+      path: ''
     }
   },
-  mounted () {
-    const path = line().x(d => xScale(xSelector(d))).y(d => yScale(ySelector(d)));
-    this.path = path(data);
+  mounted() {
+    const xScale = d3
+      .scaleLinear()
+      .range([0, 400])
+      .domain([0, 10]);
+    const yScale = d3
+      .scaleLinear()
+      .range([420, 0])
+      .domain([0, 420]);
+    const path = d3
+      .line()
+      .x(d => xScale(xSelector(d)))
+      .y(d => yScale(ySelector(d)));
+    this.path = path(this.data);
 
     const margin = { top: 40, left: 40, bottom: 40, right: 0 };
-    const yAxis = axisLeft(yScale).tickSizeInner(-420);
-    const xAxis = axisBottom(xScale);
+    const yAxis = d3.axisLeft(yScale).tickSizeInner(-420);
+    const xAxis = d3.axisBottom(xScale);
 
     const chartWidth = this.width - (margin.left + margin.right);
     const chartHeight = this.height - (margin.top + margin.bottom);
 
-    select(this.$refs.chart)
+    d3
+      .select(this.$refs.chart)
       .attr('width', chartWidth)
       .attr('height', chartHeight)
       .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
-    select(this.$refs.axis).append('g')
+    d3
+      .select(this.$refs.axis)
+      .append('g')
       .attr('transform', `translate(${margin.left}, ${margin.top})`)
       .attr('class', 'axis y')
       .call(yAxis);
 
-    select(this.$refs.axis).append('g')
-      .attr('transform', `translate(${margin.left}, ${chartHeight + margin.top})`)
+    d3
+      .select(this.$refs.axis)
+      .append('g')
+      .attr(
+        'transform',
+        `translate(${margin.left}, ${chartHeight + margin.top})`
+      )
       .attr('class', 'axis x')
       .call(xAxis);
 
-    data.forEach((d, i) => {
-      select(this.$refs.circle)
+    this.data.forEach((d, i) => {
+      d3
+        .select(this.$refs.circle)
         .attr('transform', `translate(${margin.left}, ${margin.top})`)
         .append('circle')
         .attr('cx', this.xPoint(d))
@@ -71,14 +79,30 @@ export default {
     });
   },
   methods: {
-    xPoint: function (d) {
+    xPoint: function(d) {
+      const xScale = d3
+        .scaleLinear()
+        .range([0, 400])
+        .domain([0, 10]);
+      const yScale = d3
+        .scaleLinear()
+        .range([420, 0])
+        .domain([0, 420]);
       return yScale(ySelector(d));
     },
-    yPoint: function (d) {
+    yPoint: function(d) {
+      const xScale = d3
+        .scaleLinear()
+        .range([0, 400])
+        .domain([0, 10]);
+      const yScale = d3
+        .scaleLinear()
+        .range([420, 0])
+        .domain([0, 420]);
       return xScale(xSelector(d));
     }
   }
-}
+};
 </script>
 
 <style>

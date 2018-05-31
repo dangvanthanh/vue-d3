@@ -5,37 +5,16 @@
   "author": "Dang Van Thanh <dangvanthanh@dangthanh.org>",
   "private": true,
   "scripts": {
-    "build": "run-s build:**",
-    "build:js": "cross-env NODE_ENV=production rollup -c",
-    "build:autoprefixer": "postcss --use autoprefixer -o dist/assets/css/app.css dist/assets/css/app.css",
-    "build:cssnano": "cssnano dist/assets/css/app.css dist/assets/css/app.css",
-    "serve": "cross-env NODE_ENV=development rollup -cw"
-  },
-  "dependencies": {
-    "d3-axis": "^1.0.8",
-    "d3-scale": "^2.0.0",
-    "d3-selection": "^1.3.0",
-    "d3-shape": "^1.2.0",
-    "vue": "^2.5.13"
+    "example": "poi example/index.js",
+    "public": "poi build example/index.js --out-dir public"
   },
   "devDependencies": {
-    "autoprefixer": "^8.0.0",
-    "babel-core": "^6.26.0",
-    "cross-env": "^5.0.5",
-    "cssnano-cli": "^1.0.4",
-    "npm-run-all": "^4.0.1",
-    "postcss-cli": "^5.0.0",
-    "rollup": "^0.57.1",
-    "rollup-plugin-alias": "^1.4.0",
-    "rollup-plugin-buble": "^0.19.1",
-    "rollup-plugin-uglify": "^3.0.0",
-    "rollup-plugin-commonjs": "^9.1.0",
-    "rollup-plugin-livereload": "^0.6.0",
-    "rollup-plugin-node-globals": "^1.1.0",
-    "rollup-plugin-node-resolve": "^3.0.2",
-    "rollup-plugin-replace": "^2.0.0",
-    "rollup-plugin-serve": "^0.4.2",
-    "rollup-plugin-vue": "^3.0.0",
+    "bili": "^3.1.2",
+    "poi": "^10.2.1",
+    "rollup-plugin-vue": "^4.2.0",
     "vue-template-compiler": "^2.5.13"
+  },
+  "dependencies": {
+    "d3": "^5.4.0"
   }
 }
