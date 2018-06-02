@@ -45,14 +45,14 @@ export default {
       .attr('transform', `translate(${this.x}, ${this.y})`);
   },
   methods: {
-    yScale: function(d) {
+    yScale(d) {
       const heightScale = d3
         .scaleLinear()
         .range([this.height, 0])
         .domain([0, 500]);
       return heightScale(ySelector(d));
     },
-    xScale: function(d) {
+    xScale(d) {
       const widthScale = d3
         .scaleBand()
         .range([0, this.width])
@@ -60,7 +60,7 @@ export default {
         .padding(0.3);
       return widthScale(xSelector(d));
     },
-    calcHeight: function(d) {
+    calcHeight(d) {
       const heightScale = d3
         .scaleLinear()
         .range([this.height, 0])

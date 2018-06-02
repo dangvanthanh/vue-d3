@@ -36,7 +36,7 @@ export default {
       .line()
       .x(d => xScale(xSelector(d)))
       .y(d => yScale(ySelector(d)))
-      .curve(d3.curveStep);
+      .curve(d3.curveStepAfter);
     this.path = path(this.data);
 
     const margin = { top: 40, left: 40, bottom: 40, right: 0 };
@@ -70,14 +70,14 @@ export default {
       .call(xAxis);
   },
   methods: {
-    xPoint: function(d) {
+    xPoint(d) {
       const yScale = d3
         .scaleLinear()
         .range([0, 420])
         .domain([0, 500]);
       return yScale(ySelector(d));
     },
-    yPoint: function(d) {
+    yPoint(d) {
       const xScale = d3
         .scaleLinear()
         .range([0, 400])

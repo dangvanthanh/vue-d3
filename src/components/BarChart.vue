@@ -74,14 +74,14 @@ export default {
       .call(xAxis);
   },
   methods: {
-    yScale: function(d) {
+    yScale(d) {
       const yScale = d3
         .scaleLinear()
         .range([420, 0])
         .domain([0, 500]);
       return yScale(ySelector(d));
     },
-    xScale: function(d) {
+    xScale(d) {
       const xScale = d3
         .scaleBand()
         .range([0, 400])
@@ -89,7 +89,7 @@ export default {
         .padding(0.3);
       return xScale(xSelector(d));
     },
-    calcHeight: function(d) {
+    calcHeight(d) {
       const yScale = d3
         .scaleLinear()
         .range([420, 0])

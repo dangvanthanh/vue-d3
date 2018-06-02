@@ -18,7 +18,7 @@ export default {
       width: 500,
       height: 500,
       path: ''
-    }
+    };
   },
   mounted() {
     const xScale = d3
@@ -79,7 +79,7 @@ export default {
     });
   },
   methods: {
-    xPoint: function(d) {
+    xPoint(d) {
       const xScale = d3
         .scaleLinear()
         .range([0, 400])
@@ -90,7 +90,7 @@ export default {
         .domain([0, 420]);
       return yScale(ySelector(d));
     },
-    yPoint: function(d) {
+    yPoint(d) {
       const xScale = d3
         .scaleLinear()
         .range([0, 400])
