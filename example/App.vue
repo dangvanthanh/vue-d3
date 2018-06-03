@@ -20,6 +20,14 @@
         </svg>
       </div>
       <div class="grid__item">
+        <h1>New Bar Chart (With Axis)</h1>
+        <svg width="100%" height="500">
+          <new-bar-chart :data="dataChart" width="400" height="400" x="50" y="50"/>
+          <y-axis width="500" height="400" x="50" y="50"/>
+          <x-axis :data="dataChart" width="400" x="50" y="50"/>
+        </svg>
+      </div>
+      <div class="grid__item">
         <h1>Pie Chart</h1>
         <svg width="100%" height="500">
           <pie-chart :data="dataChart" width="400" height="400" x="270" y="270"/>
@@ -30,35 +38,45 @@
 </template>
 
 <script>
-import { BarChart, LineChart, ScatterChart, NewBarChart, PieChart } from '../src/';
+import {
+  BarChart,
+  LineChart,
+  ScatterChart,
+  NewBarChart,
+  PieChart,
+  XAxis,
+  YAxis
+} from '../src/';
 import { data } from './store';
 
 export default {
   name: 'app',
-  data () {
+  data() {
     return {
       dataChart: data
-    }
+    };
   },
   components: {
     BarChart,
     LineChart,
     ScatterChart,
     NewBarChart,
-    PieChart
+    PieChart,
+    XAxis,
+    YAxis
   }
-}
+};
 </script>
 
 <style>
 body {
-    margin: 0;
+  margin: 0;
 }
 
 .app {
-    margin-top: 20px;
-    max-width: 1020px;
-    margin: 0 auto;
+  margin-top: 20px;
+  max-width: 1020px;
+  margin: 0 auto;
 }
 
 .grid {
