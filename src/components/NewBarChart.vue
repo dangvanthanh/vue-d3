@@ -75,8 +75,4 @@ export default {
 </script>
 
 <style>
-.tick line {
-  stroke-dasharray: 2 2;
-  stroke: #ccc;
-}
 </style>

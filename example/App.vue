@@ -20,11 +20,25 @@
         </svg>
       </div>
       <div class="grid__item">
-        <h1>New Bar Chart (With Axis)</h1>
+        <h1>Axis</h1>
         <svg width="100%" height="500">
-          <new-bar-chart :data="dataChart" width="400" height="400" x="50" y="50"/>
-          <y-axis width="500" height="400" x="50" y="50"/>
-          <x-axis :data="dataChart" width="400" x="50" y="50"/>
+          <g transform="translate(50, 50)">
+            <y-axis
+              :orient="axisY.orient"
+              :scale="axisY.scale"
+              :range="axisY.range"
+              :domain="axisY.domain"
+              :height="axisY.height"
+              :width="axisY.width"/>
+            />
+            <x-axis transform="translate(0, 400)"
+              :orient="axisX.orient"
+              :scale="axisX.scale"
+              :range="axisX.range"
+              :domain="axisX.domain"
+              :height="axisX.height"
+              :width="axisX.width"/>
+          </g>
         </svg>
       </div>
       <div class="grid__item">
@@ -53,7 +67,23 @@ export default {
   name: 'app',
   data() {
     return {
-      dataChart: data
+      dataChart: data,
+      axisX: {
+        scale: 'scaleLinear',
+        range: [0, 400],
+        domain: [0, 10],
+        orient: 'Bottom',
+        width: 400,
+        height: 400
+      },
+      axisY: {
+        scale: 'scaleLinear',
+        range: [0, 400],
+        domain: [500, 0],
+        orient: 'Left',
+        width: 400,
+        height: 400
+      }
     };
   },
   components: {

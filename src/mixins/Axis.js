@@ -1,13 +1,6 @@
-<template>
-  <g>
-  </g>
-</template>
-
-<script>
 import * as d3 from 'd3';
 
-export default {
-  name: 'YAxis',
+const Axis = {
   props: ['orient', 'scale', 'range', 'domain', 'height', 'width'],
   computed: {
     _transform() {
@@ -28,7 +21,5 @@ export default {
     d3.select(this.$el).call(d3[this._orient](this._scale));
   }
 };
-</script>
 
-<style>
-</style>
+export default Axis;
