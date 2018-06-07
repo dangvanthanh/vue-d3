@@ -17,7 +17,7 @@ export default {
   data() {
     return {
       arcs: {}
-    };
+    }
   },
   mounted() {
     d3
@@ -44,7 +44,7 @@ export default {
       return arc;
     });
   }
-};
+}
 </script>
 
 <style>

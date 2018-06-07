@@ -18,7 +18,7 @@ export default {
       width: 500,
       height: 500,
       path: ''
-    };
+    }
   },
   mounted() {
     const xScale = d3
@@ -68,7 +68,7 @@ export default {
     this.data.forEach((d, i) => {
       d3
         .select(this.$refs.circle)
-        .attr('transform', `translate(${margin.left}, ${margin.top})`)
+        .attr('transform', `translate(130, ${margin.top})`)
         .append('circle')
         .attr('cx', this.xPoint(d))
         .attr('cy', this.yPoint(d))
@@ -102,7 +102,7 @@ export default {
       return xScale(xSelector(d));
     }
   }
-};
+}
 </script>
 
 <style>

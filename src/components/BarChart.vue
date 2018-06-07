@@ -22,13 +22,11 @@ import { xSelector, ySelector } from '../utils';
 
 export default {
   name: 'BarChart',
-  props: ['data'],
+  props: ['data', 'width', 'height'],
   data() {
     return {
-      width: 500,
-      height: 500,
       w: 0
-    };
+    }
   },
   mounted() {
     const xScale = d3
@@ -103,7 +101,7 @@ export default {
       return barHeight;
     }
   }
-};
+}
 </script>
 
 <style>

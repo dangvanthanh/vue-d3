@@ -23,7 +23,7 @@ export default {
   data() {
     return {
       w: 0
-    };
+    }
   },
   mounted() {
     const widthScale = d3

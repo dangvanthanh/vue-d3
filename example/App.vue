@@ -3,7 +3,7 @@
     <div class="grid">
       <div class="grid__item">
         <h1>Bar Chart</h1>
-        <bar-chart :data="dataChart"/>
+        <bar-chart :data="dataChart" width="500" height="500"/>
       </div>
       <div class="grid__item">
         <h1>Line Chart</h1>
@@ -47,6 +47,16 @@
           <pie-chart :data="dataChart" width="400" height="400" x="270" y="270"/>
         </svg>
       </div>
+      <div class="grid__item">
+        <h1>Bubble Chart</h1>
+        <bubble-chart :data="dataChart" width="400" height="400" />
+      </div>
+      <div class="grid__item">
+        <h1>Area Chart</h1>
+        <svg width="100%" height="500">
+          <area-chart :data="dataChart" width="400" height="500" />
+        </svg>
+      </div>
     </div>
   </div>
 </template>
@@ -58,6 +68,8 @@ import {
   ScatterChart,
   NewBarChart,
   PieChart,
+  BubbleChart,
+  AreaChart,
   XAxis,
   YAxis
 } from '../src/';
@@ -92,10 +104,12 @@ export default {
     ScatterChart,
     NewBarChart,
     PieChart,
+    BubbleChart,
+    AreaChart,
     XAxis,
     YAxis
   }
-};
+}
 </script>
 
 <style>

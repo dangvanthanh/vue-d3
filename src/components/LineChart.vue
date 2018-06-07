@@ -21,17 +21,17 @@ export default {
       height: 500,
       path: '',
       selected: null
-    };
+    }
   },
   mounted() {
     const xScale = d3
       .scaleLinear()
       .range([0, 400])
-      .domain([0, 10]);
+      .domain([0, this.data.length]);
     const yScale = d3
       .scaleLinear()
       .range([0, 420])
-      .domain([0, 500]);
+      .domain([500, 0]);
     const path = d3
       .line()
       .x(d => xScale(xSelector(d)))
