@@ -5,12 +5,15 @@
   "author": "Dang Van Thanh <dangvanthanh@dangthanh.org>",
   "private": true,
   "scripts": {
+    "precommit": "pretty-quick --staged",
     "example": "poi example/index.js",
     "public": "poi build example/index.js --out-dir public"
   },
   "devDependencies": {
     "bili": "^3.1.2",
-    "poi": "^10.2.1",
+    "husky": "^0.14.3",
+    "poi": "^10.2.9",
+    "pretty-quick": "^1.6.0",
     "rollup-plugin-vue": "^4.2.0",
     "vue-template-compiler": "^2.5.13"
   },
