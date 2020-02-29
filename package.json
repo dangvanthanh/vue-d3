@@ -10,14 +10,14 @@
     "public": "poi build example/index.js --out-dir public"
   },
   "devDependencies": {
-    "bili": "^3.1.2",
-    "husky": "^0.14.3",
-    "poi": "^10.2.9",
-    "pretty-quick": "^1.6.0",
-    "rollup-plugin-vue": "^4.2.0",
-    "vue-template-compiler": "^2.5.13"
+    "bili": "^4.8.1",
+    "husky": "^4.2.3",
+    "poi": "^12.7.5",
+    "pretty-quick": "^2.0.1",
+    "rollup-plugin-vue": "^5.1.6",
+    "vue-template-compiler": "^2.6.11"
   },
   "dependencies": {
-    "d3": "^5.4.0"
+    "d3": "^5.15.0"
   }
 }
