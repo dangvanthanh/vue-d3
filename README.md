@@ -14,4 +14,4 @@
 
 ## License
 
-MIT © Dang Van Thanh <dangvanthanh@dangthanh.org>
+MIT © [Dang Van Thanh](http://dangthanh.org)
