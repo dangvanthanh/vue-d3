@@ -19,7 +19,7 @@
     "vue-template-compiler": "^2.6.11"
   },
   "dependencies": {
-    "d3": "5.15.1",
+    "d3": "7.0.1",
     "vue": "^2.6.14"
   },
   "prettier": "@dangvanthanh/prettier-config"
