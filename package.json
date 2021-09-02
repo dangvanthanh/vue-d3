@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "precommit": "pretty-quick --staged",
-    "example": "poi example/index.js",
+    "dev": "poi --serve example/index.js",
     "public": "poi build example/index.js --out-dir public"
   },
   "devDependencies": {
