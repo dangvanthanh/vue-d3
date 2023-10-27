@@ -82,7 +82,7 @@ export default {
     xPoint(d) {
       const xScale = d3
         .scaleLinear()
-        .range([0, 400])
+        .range([0, 260])
         .domain([0, 10]);
       const yScale = d3
         .scaleLinear()
@@ -93,7 +93,7 @@ export default {
     yPoint(d) {
       const xScale = d3
         .scaleLinear()
-        .range([0, 400])
+        .range([0, 260])
         .domain([0, 10]);
       const yScale = d3
         .scaleLinear()

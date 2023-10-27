@@ -53,7 +53,7 @@ export const data = [
   },
   {
     x: 13,
-    y: 450
+    y: 250
   },
   {
     x: 14,
