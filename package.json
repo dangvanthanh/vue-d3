@@ -1,26 +1,26 @@
 {
-  "name": "vue-d3",
-  "version": "1.0.0",
-  "description": "Chart with Vue.js and D3.js",
-  "author": "Dang Van Thanh <dangvanthanh@dangthanh.org>",
-  "private": true,
-  "scripts": {
-    "precommit": "pretty-quick --staged",
-    "dev": "poi --serve example/index.js",
-    "public": "poi build example/index.js --out-dir public"
-  },
-  "devDependencies": {
-    "@dangvanthanh/prettier-config": "^1.0.0",
-    "bili": "5.0.5",
-    "husky": "7.0.2",
-    "poi": "^12.10.3",
-    "pretty-quick": "3.1.1",
-    "rollup-plugin-vue": "^5.1.9",
-    "vue-template-compiler": "^2.7.15"
-  },
-  "dependencies": {
-    "d3": "7.0.1",
-    "vue": "^2.7.15"
-  },
-  "prettier": "@dangvanthanh/prettier-config"
+	"name": "vue-d3",
+	"version": "1.0.0",
+	"description": "Chart with Vue.js and D3.js",
+	"author": "Dang Van Thanh <dangvanthanh@dangthanh.org>",
+	"private": true,
+	"scripts": {
+		"precommit": "pretty-quick --staged",
+		"dev": "poi --serve example/index.js",
+		"public": "poi build example/index.js --out-dir public"
+	},
+	"devDependencies": {
+		"@dangvanthanh/prettier-config": "^1.0.0",
+		"bili": "5.0.5",
+		"husky": "7.0.2",
+		"poi": "^12.10.3",
+		"pretty-quick": "3.1.1",
+		"rollup-plugin-vue": "^5.1.9",
+		"vue-template-compiler": "^2.7.16"
+	},
+	"dependencies": {
+		"d3": "7.8.5",
+		"vue": "^2.7.16"
+	},
+	"prettier": "@dangvanthanh/prettier-config"
 }
