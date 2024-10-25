@@ -20,7 +20,7 @@
 	},
 	"dependencies": {
 		"d3": "7.8.5",
-		"vue": "^2.7.16"
+		"vue": "^3.0.0"
 	},
 	"prettier": "@dangvanthanh/prettier-config"
 }
